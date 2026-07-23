@@ -68,6 +68,32 @@ los 15 partidos de la Fecha 1 (Belgrano-Central, Racing, River, Boca, etc.).
 | 9 | `layout` decía "Create Next App", idioma inglés, fuente Geist pisaba Outfit | Metadata y `lang="es"` correctos, Outfit sin conflictos |
 | 10 | `/api/seed` borraba TODOS los partidos sin login | Ahora requiere admin |
 
+## Deploy en Vercel (conectado a GitHub)
+
+El repo ya está en GitHub: **github.com/javieramado91-dotcom/Prode-argentino**.
+Para que Vercel lo despliegue solo en cada `git push`:
+
+1. Entrá a **[vercel.com/new](https://vercel.com/new)** e iniciá sesión (podés usar GitHub).
+2. **Import Git Repository** → elegí `Prode-argentino`. Vercel detecta Next.js solo
+   (no cambies Build Command ni Output).
+3. Antes de **Deploy**, abrí **Environment Variables** y agregá estas dos
+   (son públicas, van en el navegador; están protegidas por RLS en Supabase):
+
+   | Name | Value |
+   |------|-------|
+   | `NEXT_PUBLIC_SUPABASE_URL` | `https://uxdnedasfycjuopplrdh.supabase.co` |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_yTGoxplxXwc5FtL2zUI5tQ_bmcQtPl4` |
+
+4. **Deploy**. En ~1 min tenés la URL en vivo. Cada push a `main` re-despliega solo.
+
+5. **Importante para el login en producción:** en Supabase → **Authentication → URL
+   Configuration**, poné tu dominio de Vercel (ej. `https://prode-argentino.vercel.app`)
+   como **Site URL** y agregalo en **Redirect URLs**. Así los mails de confirmación y las
+   sesiones funcionan en el dominio publicado.
+
+> No hace falta configurar `API_FOOTBALL_KEY` ni `ESPN_LEAGUE_SLUG`: la fuente de datos
+> es ESPN (gratis, sin key) y ya trae un valor por defecto.
+
 ## Gamificación ya incluida
 
 - **Perfil estilo videojuego** (`/perfil`): puntos, % de aciertos, partidos jugados,
