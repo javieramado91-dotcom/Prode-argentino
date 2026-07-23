@@ -1,0 +1,145 @@
+============================================================
+PRODE FÚTBOL ARGENTINO
+Reglas del juego y guía para jugadores — Liga Profesional
+============================================================
+
+El Prode es un juego de pronósticos sobre los partidos del fútbol
+argentino. Antes de cada partido decís cómo va a salir; cuando termina,
+sumás puntos según cuánto le pegaste. Competís en el ranking general
+contra todos y, si querés, en torneos privados contra tus amigos.
+Se juega desde el celular o la computadora, sin pagar nada.
+
+
+1. CÓMO EMPEZAR
+------------------------------------------------------------
+- Registrate con tu email y una contraseña desde la pantalla de inicio.
+- Si te llega un correo de confirmación, tocá el enlace para activar
+  tu cuenta.
+- Tu cuenta queda EN REVISIÓN hasta que el administrador la apruebe.
+  Apenas te aprueba, entrás a jugar.
+- Consejo: agregá la app a la pantalla de inicio del celular
+  (en Chrome: menú de los tres puntos → "Agregar a pantalla principal").
+  Queda instalada como una app más.
+
+
+2. CÓMO SE JUEGA
+------------------------------------------------------------
+- En la pestaña POR JUGAR están los próximos partidos, separados por
+  fecha del campeonato (Fecha 1, Fecha 2...).
+- En cada partido cargás cuántos goles hace cada equipo y tocás
+  "Guardar pronóstico".
+- Podés cambiar tu pronóstico las veces que quieras... hasta que el
+  partido empieza. A la hora del arranque se bloquea, sin excepciones.
+- Se puede pronosticar hasta 3 FECHAS hacia adelante. Las fechas más
+  lejanas se ven en el Calendario y se habilitan cuando se acercan.
+- Si no cargás pronóstico en un partido, ese partido te da 0 puntos.
+
+
+3. CÓMO SE SUMAN LOS PUNTOS
+------------------------------------------------------------
+                                   Partido normal   Partido de la Fecha
+  Resultado exacto                     6 puntos          12 puntos
+  Ganador o empate (sin marcador)      3 puntos           6 puntos
+  Nada                                 0 puntos           0 puntos
+
+  Ejemplo: pronosticaste Boca 2-1 River y salió 2-1: sumás 6.
+  Si salió 3-1, acertaste el ganador pero no el marcador: sumás 3.
+  Si salió empate o ganó River, no sumás.
+
+- El PARTIDO DE LA FECHA es un partido destacado que elige el
+  administrador en cada fecha. Se reconoce por la etiqueta dorada
+  "PARTIDO DE LA FECHA" y vale doble.
+- Los puntos se acreditan solos cuando el partido termina.
+
+
+4. LAS SECCIONES DE LA APP
+------------------------------------------------------------
+- POR JUGAR: los partidos que podés pronosticar ahora, por fecha.
+- EN VIVO: los partidos que se están jugando, con el marcador
+  actualizándose solo. Aparece únicamente cuando hay fútbol en juego.
+- RESULTADOS: los partidos terminados, con tu pronóstico, el resultado
+  real y cuántos puntos te dio cada uno.
+- CALENDARIO: todas las fechas del campeonato — pasadas, presentes y
+  futuras — para planificar tus pronósticos.
+- RANKING: la tabla general de posiciones. Se puede exportar como
+  imagen para compartir en redes o en el grupo de WhatsApp.
+
+
+5. TU PERFIL, NIVELES Y RACHA
+------------------------------------------------------------
+En MI PERFIL ves tu historia como pronosticador: puntos totales,
+porcentaje de aciertos, partidos jugados, resultados exactos,
+ganadores acertados, tu mejor racha y tu puesto en el ranking.
+
+Niveles (según tus puntos acumulados):
+  - Amateur (bronce) ........... 0 a 59 puntos
+  - Experto (plata) ............ 60 a 149 puntos
+  - Maestro del Prode (oro) .... 150 a 299 puntos
+  - Leyenda (corona) ........... 300 puntos o más
+
+- La RACHA cuenta cuántos partidos seguidos sumaste puntos. Se corta
+  cuando un pronóstico no suma nada.
+- Una barra de progreso te muestra cuánto te falta para el próximo
+  nivel.
+
+
+6. TORNEOS ENTRE AMIGOS
+------------------------------------------------------------
+Además del ranking general, podés armar TORNEOS PRIVADOS: mini-ligas
+con tus amigos, la familia o el trabajo, cada una con su propia tabla.
+
+Crear un torneo:
+- Entrá a "Torneos", poné un nombre (ej: "Los del asado") y elegí
+  DESDE QUÉ FECHA del campeonato empieza a puntuar. Así, si crean el
+  torneo a mitad del campeonato, arrancan todos de cero desde esa
+  fecha, sin ventajas.
+- También podés elegir que cuente desde el inicio del campeonato.
+- Al crearlo obtenés un CÓDIGO DE INVITACIÓN de 6 letras y números.
+
+Invitar y unirse:
+- Compartí el código con el botón "Invitar por WhatsApp": arma el
+  mensaje solo, con el enlace y el código.
+- Para unirte a un torneo ajeno: Torneos → "Unirse con código" →
+  escribís el código y listo.
+- Podés estar en todos los torneos que quieras a la vez. Tus
+  pronósticos son los mismos; cada torneo suma los puntos desde su
+  fecha de arranque.
+- La tabla de cada torneo también se exporta como imagen.
+
+
+7. EL ROL DEL ADMINISTRADOR
+------------------------------------------------------------
+El administrador es quien organiza el juego. Desde su panel puede:
+- APROBAR A LOS NUEVOS JUGADORES. Cuando alguien se registra, aparece
+  como "Pendiente"; con un toque en "Aprobar" ya puede jugar. Esto
+  evita colados.
+- ELEGIR EL PARTIDO DE LA FECHA de la próxima fecha (el que vale
+  doble). Puede cambiarlo o quitarlo mientras la fecha no arranque;
+  solo puede haber uno.
+- Ver la lista completa de usuarios registrados y su estado.
+
+Los partidos, los resultados y los puntos se actualizan solos: el
+administrador no tiene que cargar nada a mano.
+
+
+8. PREGUNTAS FRECUENTES
+------------------------------------------------------------
+- ¿Puedo cambiar un pronóstico?
+  Sí, hasta el minuto en que empieza el partido.
+- ¿Qué pasa si me olvido de pronosticar?
+  Ese partido te da 0 puntos. Conviene dejar cargadas las fechas
+  apenas se habilitan.
+- ¿Cuándo se suman los puntos?
+  Automáticamente cuando el partido termina.
+- ¿Los demás ven mis pronósticos?
+  No: tus pronósticos son tuyos. De los demás se ve su puntaje en las
+  tablas.
+- ¿Se puede empatar en el ranking?
+  Sí; los empatados comparten posición.
+- ¿Cuánto sale?
+  Nada. Es gratis.
+
+============================================================
+Prode Fútbol Argentino — prode-argentino.vercel.app
+¡Que gane el que más sabe!
+============================================================

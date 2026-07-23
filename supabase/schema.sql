@@ -263,6 +263,9 @@ create policy users_update_self on public.users
 create unique index if not exists groups_invite_code_key on public.groups (invite_code);
 create unique index if not exists group_members_pk on public.group_members (group_id, user_id);
 
+-- Fecha del torneo argentino desde la que puntúa el torneo (null = cuenta todo).
+alter table public.groups add column if not exists start_round text;
+
 -- Helper de membresía (SECURITY DEFINER para no recursar en las políticas).
 create or replace function public.is_group_member(gid uuid, uid uuid)
 returns boolean
@@ -275,8 +278,10 @@ as $$
   );
 $$;
 
--- Crear grupo: genera un código de invitación único y suma al creador.
-create or replace function public.create_group(p_name text)
+-- Crear torneo: genera un código de invitación único, suma al creador y
+-- permite elegir desde qué fecha del torneo argentino empieza a puntuar.
+drop function if exists public.create_group(text);
+create or replace function public.create_group(p_name text, p_start_round text default null)
 returns table (id uuid, invite_code text)
 language plpgsql
 security definer set search_path = public
@@ -293,8 +298,8 @@ begin
     exit when not exists (select 1 from public.groups g where g.invite_code = code);
   end loop;
 
-  insert into public.groups (name, owner_id, invite_code)
-  values (trim(p_name), auth.uid(), code)
+  insert into public.groups (name, owner_id, invite_code, start_round)
+  values (trim(p_name), auth.uid(), code, nullif(trim(coalesce(p_start_round, '')), ''))
   returning groups.id into new_id;
 
   insert into public.group_members (group_id, user_id)
@@ -328,9 +333,10 @@ begin
 end;
 $$;
 
--- Mis grupos, con cantidad de miembros y mis puntos en cada uno.
+-- Mis torneos, con cantidad de miembros, mis puntos en cada uno y su fecha de inicio.
+drop function if exists public.my_groups();
 create or replace function public.my_groups()
-returns table (id uuid, name text, invite_code text, members bigint, my_points bigint)
+returns table (id uuid, name text, invite_code text, members bigint, my_points bigint, start_round text)
 language sql
 security definer set search_path = public
 stable
@@ -340,14 +346,17 @@ as $$
          coalesce((
            select sum(p.points_earned)
            from public.predictions p
+           join public.matches m on m.id = p.match_id
            where p.user_id = auth.uid()
-         ), 0) as my_points
+             and (g.start_round is null or m.round >= g.start_round)
+         ), 0) as my_points,
+         g.start_round
   from public.groups g
   join public.group_members gm on gm.group_id = g.id and gm.user_id = auth.uid()
   order by g.created_at desc;
 $$;
 
--- Ranking dentro de un grupo (solo para miembros del grupo).
+-- Ranking dentro de un torneo (solo miembros). Puntúa desde la fecha elegida.
 create or replace function public.get_group_leaderboard(gid uuid)
 returns table (user_id uuid, display_name text, points bigint)
 language sql
@@ -356,10 +365,14 @@ stable
 as $$
   select u.id,
          coalesce(u.display_name, split_part(u.email, '@', 1)) as display_name,
-         coalesce(sum(p.points_earned), 0) as points
+         coalesce(sum(p.points_earned) filter (
+           where gr.start_round is null or m.round >= gr.start_round
+         ), 0) as points
   from public.group_members gm
+  join public.groups gr on gr.id = gm.group_id
   join public.users u on u.id = gm.user_id
   left join public.predictions p on p.user_id = u.id
+  left join public.matches m on m.id = p.match_id
   where gm.group_id = gid
     and public.is_group_member(gid, auth.uid())  -- el que consulta debe ser miembro
   group by u.id, u.display_name, u.email

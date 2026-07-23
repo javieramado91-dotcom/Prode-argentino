@@ -9,9 +9,14 @@ export async function createGroupAction(formData: FormData) {
   if (!user) redirect('/login');
 
   const name = (formData.get('name') as string)?.trim();
-  if (!name) redirect('/grupos?error=' + encodeURIComponent('Poné un nombre al grupo'));
+  if (!name) redirect('/grupos?error=' + encodeURIComponent('Poné un nombre al torneo'));
 
-  const { data, error } = await supabase.rpc('create_group', { p_name: name });
+  const startRound = ((formData.get('start_round') as string) || '').trim() || null;
+
+  const { data, error } = await supabase.rpc('create_group', {
+    p_name: name,
+    p_start_round: startRound,
+  });
   if (error) redirect('/grupos?error=' + encodeURIComponent(error.message));
 
   const groupId = data?.[0]?.id;
