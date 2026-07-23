@@ -12,7 +12,7 @@ type Stats = {
   total_points: number
   accuracy: number
   best_streak: number
-  position: number
+  rank_position: number
 }
 
 // Nivel estilo videojuego según puntos acumulados.
@@ -44,7 +44,7 @@ export default async function PerfilPage() {
   const { data: statsRows } = await supabase.rpc('get_user_stats', { uid: user.id })
   const s: Stats = statsRows?.[0] || {
     played: 0, exact_count: 0, correct_count: 0, zero_count: 0,
-    total_points: 0, accuracy: 0, best_streak: 0, position: 0,
+    total_points: 0, accuracy: 0, best_streak: 0, rank_position: 0,
   }
 
   const name = profile.display_name || user.email
@@ -75,9 +75,9 @@ export default async function PerfilPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <span style={{ fontSize: '1.4rem' }}>{lvl.icon}</span>
             <span style={{ fontWeight: 700, color: lvl.color }}>{lvl.name}</span>
-            {s.position > 0 && (
+            {s.rank_position > 0 && (
               <span style={{ marginLeft: 'auto', color: 'var(--color-text-muted)' }}>
-                Puesto <strong style={{ color: 'var(--color-accent)' }}>#{s.position}</strong>
+                Puesto <strong style={{ color: 'var(--color-accent)' }}>#{s.rank_position}</strong>
               </span>
             )}
           </div>

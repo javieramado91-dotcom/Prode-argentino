@@ -142,7 +142,7 @@ returns table (
   total_points  bigint,
   accuracy      numeric,
   best_streak   int,
-  position      bigint
+  rank_position bigint
 )
 language plpgsql
 security definer set search_path = public
