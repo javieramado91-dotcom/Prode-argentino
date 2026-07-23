@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { login, signup, resetPasswordAction } from './actions';
+import { login, signup } from './actions';
 import { createClient } from '@/lib/supabase/client';
 import styles from './page.module.css';
 
@@ -40,19 +40,30 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
   const sendReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetError(null);
-    if (!resetEmail.trim()) { setResetError('Ingresá tu email.'); return; }
+    const email = resetEmail.trim().toLowerCase();
+    if (!email) { setResetError('Ingresá tu email.'); return; }
     setResetLoading(true);
     try {
-      const res = await resetPasswordAction(resetEmail.trim());
+      // Llamar directamente desde el navegador a Supabase (no server action)
+      const supabase = createClient();
+      const redirectTo = `${window.location.origin}/reset`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       setResetLoading(false);
-      if (res?.error) {
-        setResetError(res.error);
+      if (error) {
+        const msg = error.message || '';
+        if (error.status === 429 || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('email rate')) {
+          setResetError('Demasiados intentos. Esperá unos minutos antes de solicitar otro correo.');
+        } else if (!msg || msg === '{}' || msg === '[]') {
+          setResetError('No se pudo enviar el correo. Verificá que el email esté registrado.');
+        } else {
+          setResetError(msg);
+        }
       } else {
         setResetSent(true);
       }
     } catch (err: any) {
       setResetLoading(false);
-      setResetError('No se pudo procesar la solicitud. Por favor intenta de nuevo.');
+      setResetError('No se pudo conectar con el servidor. Intentá de nuevo.');
     }
   };
 
