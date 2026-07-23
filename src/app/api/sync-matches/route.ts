@@ -13,8 +13,9 @@ const ESPN_LEAGUE = process.env.ESPN_LEAGUE_SLUG || 'arg.1'
 const DAYS_BACK = 10
 const DAYS_AHEAD = 28
 
-// Throttle global (por instancia): evita golpear ESPN en cada request.
-const MIN_INTERVAL_MS = 45_000
+// Throttle global (por instancia): evita golpear ESPN en cada request, pero
+// bajo para que los marcadores en vivo se refresquen seguido.
+const MIN_INTERVAL_MS = 25_000
 let lastSyncAt = 0
 
 type EspnCompetitor = {

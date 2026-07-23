@@ -4,9 +4,9 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 /**
- * Refresca los datos del servidor (marcadores, estados) sin recargar la página
- * entera. Se activa solo cuando hay algún partido en vivo, para no gastar
- * recursos de más.
+ * Mientras haya partidos en vivo, re-sincroniza con ESPN y refresca los datos
+ * (marcadores y estados) cada cierto tiempo, sin recargar la página entera.
+ * El endpoint tiene throttle, así que llamarlo seguido es barato.
  */
 export default function LiveRefresher({
   active,
@@ -19,7 +19,14 @@ export default function LiveRefresher({
 
   useEffect(() => {
     if (!active) return;
-    const id = setInterval(() => router.refresh(), intervalMs);
+    const id = setInterval(async () => {
+      try {
+        await fetch('/api/sync-matches', { method: 'POST' });
+      } catch {
+        /* si falla el sync, igual refrescamos lo que haya */
+      }
+      router.refresh();
+    }, intervalMs);
     return () => clearInterval(id);
   }, [active, intervalMs, router]);
 
