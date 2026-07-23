@@ -125,21 +125,39 @@ export async function POST(request: Request) {
       .from('matches')
       .upsert(rows, { onConflict: 'api_id' })
     if (upsertError) {
-      // Columna inexistente => la migración SQL no se ejecutó todavía.
       const msg = upsertError.message || ''
+      // Usuario común sin service_role: RLS bloquea la escritura. Caso esperado,
+      // no es un error (verá los datos de la última sincronización).
+      if (upsertError.code === '42501' || msg.includes('row-level security') || msg.includes('permission denied')) {
+        return NextResponse.json(
+          { skipped: true, reason: 'sin_permisos_escritura', detail: msg },
+          { status: 200 }
+        )
+      }
+      // Columna inexistente => la migración SQL no se ejecutó todavía.
       if (upsertError.code === 'PGRST204' || upsertError.code === '42703' || msg.includes('schema cache') || msg.includes('does not exist')) {
         return NextResponse.json(
           {
             error:
-              'La base de datos todavía no está migrada: ejecutá el archivo supabase/schema.sql en Supabase → SQL Editor (una sola vez) y recargá la página.',
+              'La base de datos todavía no está migrada: ejecutá el archivo supabase/schema.sql en Supabase → SQL Editor y recargá la página.',
             detail: msg,
           },
           { status: 200 }
         )
       }
-      // Sin service_role y sin admin, RLS bloquea la escritura: no es fatal.
+      // Índice único ausente/parcial u otro problema real: SIEMPRE visible.
+      if (upsertError.code === '42P10' || msg.includes('ON CONFLICT')) {
+        return NextResponse.json(
+          {
+            error:
+              'Falta el índice único de sincronización: volvé a ejecutar supabase/schema.sql (versión actualizada) en Supabase → SQL Editor.',
+            detail: msg,
+          },
+          { status: 200 }
+        )
+      }
       return NextResponse.json(
-        { skipped: true, reason: 'sin_permisos_escritura', detail: msg },
+        { error: `No se pudieron guardar los partidos: ${msg}` },
         { status: 200 }
       )
     }

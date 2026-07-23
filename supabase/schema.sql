@@ -22,8 +22,18 @@ alter table public.matches add column if not exists away_logo  text;
 -- "Partido de la Fecha": vale doble.
 alter table public.matches add column if not exists featured   boolean not null default false;
 
--- Evita duplicados al sincronizar por id de la API-Football.
-create unique index if not exists matches_api_id_key on public.matches (api_id) where api_id is not null;
+-- Evita duplicados al sincronizar por id de la API.
+-- IMPORTANTE: índice único COMPLETO (no parcial): el upsert de Supabase
+-- (ON CONFLICT api_id) no puede usar índices parciales. Los NULL no chocan
+-- entre sí en un índice único, así que es seguro.
+drop index if exists matches_api_id_key;
+create unique index if not exists matches_api_id_key on public.matches (api_id);
+
+-- Limpieza: borra los partidos de prueba viejos (sin id de la API) y sus
+-- pronósticos asociados, para que solo queden los datos reales de ESPN.
+delete from public.predictions
+  where match_id in (select id from public.matches where api_id is null);
+delete from public.matches where api_id is null;
 
 -- predictions: le faltaban las columnas del marcador pronosticado (¡crítico!)
 alter table public.predictions add column if not exists predicted_home_score int;
