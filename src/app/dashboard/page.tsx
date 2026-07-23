@@ -1,0 +1,133 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import MatchList from '@/components/MatchList/MatchList'
+import { MatchProps } from '@/components/MatchCard/MatchCard'
+import Leaderboard from '@/components/Leaderboard/Leaderboard'
+import LiveRefresher from '@/components/LiveRefresher/LiveRefresher'
+
+export const dynamic = 'force-dynamic'
+
+type LeaderboardRow = { user_id: string; display_name: string; points: number }
+
+export default async function DashboardPage() {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.is_approved) redirect('/pending-approval')
+
+  const { data: dbMatches } = await supabase
+    .from('matches')
+    .select('*')
+    .order('match_date', { ascending: true })
+
+  const { data: predictions } = await supabase
+    .from('predictions')
+    .select('*')
+    .eq('user_id', user.id)
+
+  // Ranking global real (función SECURITY DEFINER que suma puntos por usuario).
+  const { data: leaderboard } = await supabase.rpc('get_leaderboard')
+  const board: LeaderboardRow[] = leaderboard || []
+
+  const myPoints = board.find((r) => r.user_id === user.id)?.points ?? 0
+  const myPosition = board.findIndex((r) => r.user_id === user.id) + 1
+
+  const realMatches: MatchProps[] = (dbMatches || []).map((m: any) => {
+    const pred = predictions?.find((p: any) => p.match_id === m.id)
+    return {
+      id: m.id,
+      homeTeam: m.home_team,
+      awayTeam: m.away_team,
+      homeLogo: m.home_logo,
+      awayLogo: m.away_logo,
+      matchDate: m.match_date,
+      status: m.status,
+      homeScore: m.home_score,
+      awayScore: m.away_score,
+      featured: m.featured,
+      userPrediction: pred
+        ? {
+            home: pred.predicted_home_score,
+            away: pred.predicted_away_score,
+            pointsEarned: pred.points_earned,
+          }
+        : undefined,
+    }
+  })
+
+  const hasLive = realMatches.some((m) => m.status === 'in_progress')
+  const roundTitle = dbMatches?.[0]?.round
+    ? `${dbMatches[0].round} — Liga Profesional`
+    : 'Próxima Fecha — Liga Profesional'
+
+  const boardUsers = board.map((r) => ({
+    id: r.user_id,
+    name: r.display_name,
+    points: r.points,
+  }))
+
+  return (
+    <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Refresca la página automáticamente mientras haya partidos en vivo. */}
+      <LiveRefresher active={hasLive} intervalMs={30000} />
+
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 className="gradient-text" style={{ fontSize: '2.5rem', margin: '0 0 0.5rem 0' }}>Prode Argentino</h1>
+          <p style={{ color: 'var(--color-text-muted)' }}>
+            Bienvenido, {profile.display_name || user.email}
+            {myPosition > 0 && (
+              <> · <strong style={{ color: 'var(--color-accent)' }}>#{myPosition}</strong> en el ranking</>
+            )}
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>
+            👥 Grupos
+          </Link>
+          <Link href="/perfil" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>
+            👤 Mi Perfil
+          </Link>
+          {profile?.is_admin && (
+            <Link href="/admin" className="btn-primary" style={{ background: 'var(--color-secondary)' }}>
+              👑 Panel Admin
+            </Link>
+          )}
+          <div className="glass-panel" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>Puntos Globales</span>
+            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-accent)' }}>{myPoints}</span>
+          </div>
+          <form action="/auth/signout" method="post">
+            <button className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--color-danger)', color: 'var(--color-danger)' }}>
+              Cerrar Sesión
+            </button>
+          </form>
+        </div>
+      </header>
+
+      <section>
+        {realMatches.length > 0 ? (
+          <MatchList title={roundTitle} matches={realMatches} />
+        ) : (
+          <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            Todavía no hay partidos cargados. El administrador debe sincronizar la fecha desde el Panel Admin.
+          </div>
+        )}
+      </section>
+
+      <section>
+        <Leaderboard title="Ranking Principal" users={boardUsers} />
+      </section>
+    </main>
+  )
+}

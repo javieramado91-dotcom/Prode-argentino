@@ -1,0 +1,21 @@
+.container {
+  margin-bottom: 3rem;
+  width: 100%;
+}
+
+.title {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

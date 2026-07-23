@@ -1,0 +1,146 @@
+.container {
+  width: 100%;
+  margin-bottom: 3rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.exportBtn {
+  background: linear-gradient(135deg, #e1306c 0%, #fd1d1d 50%, #f56040 100%);
+  padding: 8px 16px;
+  font-size: 0.9rem;
+}
+
+.exportBtn:hover {
+  box-shadow: 0 8px 25px rgba(225, 48, 108, 0.4);
+}
+
+.rankingBoard {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.boardHeader {
+  background: rgba(0, 158, 227, 0.1);
+  padding: 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.boardHeader h3 {
+  margin: 0;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 1.2rem;
+}
+
+.tableContainer {
+  padding: 1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.table th {
+  padding: 0.5rem 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.table td {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.table tr td:first-child {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.table tr td:last-child {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.table tr:hover td {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.posCol {
+  width: 60px;
+  text-align: center !important;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.ptsCol {
+  width: 80px;
+  text-align: center !important;
+  font-weight: 800;
+  color: var(--color-accent);
+  font-size: 1.2rem;
+}
+
+.playerInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: white;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.playerName {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.topThree td {
+  background: rgba(0, 158, 227, 0.08);
+}
+
+.watermark {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.emptyState {
+  text-align: center !important;
+  color: var(--color-text-muted);
+  padding: 3rem !important;
+}
