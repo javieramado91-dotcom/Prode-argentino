@@ -56,3 +56,33 @@ export async function signup(formData: FormData) {
   revalidatePath('/', 'layout')
   redirect('/pending-approval')
 }
+
+export async function resetPasswordAction(email: string) {
+  const supabase = await createClient()
+
+  const h = await headers()
+  const origin = h.get('origin') || `https://${h.get('host') || 'prode-argentino.vercel.app'}`
+
+  const cleanEmail = (email || '').trim().toLowerCase()
+  if (!cleanEmail) {
+    return { error: 'Ingresá tu correo electrónico.' }
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+    redirectTo: `${origin}/reset`
+  })
+
+  if (error) {
+    let msg = error.message || ''
+    if (msg.includes('redirect_to') || msg.includes('redirect')) {
+      msg = 'La URL de redirección no está permitida en Supabase. Agregá ' + origin + '/reset en Supabase -> Authentication -> URL Configuration -> Redirect URLs.'
+    } else if (msg.includes('rate limit') || (error as any)?.status === 429) {
+      msg = 'Superaste el límite de envíos por hora de Supabase. Aguardá unos minutos e intentá nuevamente.'
+    } else if (!msg || msg === '[]' || msg === '{}' || (error as any)?.status === 500) {
+      msg = 'No se pudo enviar el correo de recuperación. Verificá que la casilla esté registrada correctamente o que la URL /reset esté autorizada en Supabase.'
+    }
+    return { error: msg }
+  }
+
+  return { success: true }
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { login, signup } from './actions';
+import { login, signup, resetPasswordAction } from './actions';
 import { createClient } from '@/lib/supabase/client';
 import styles from './page.module.css';
 
@@ -43,25 +43,10 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
     if (!resetEmail.trim()) { setResetError('Ingresá tu email.'); return; }
     setResetLoading(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-        redirectTo: `${window.location.origin}/reset`,
-      });
+      const res = await resetPasswordAction(resetEmail.trim());
       setResetLoading(false);
-      if (error) {
-        let msg = '';
-        if (typeof error === 'string') msg = error;
-        else if (error && typeof error.message === 'string') msg = error.message;
-        else if (error) msg = JSON.stringify(error);
-
-        if (!msg || msg === '[]' || msg === '{}' || msg.includes('object') || (error as any)?.status === 500) {
-          msg = 'No se pudo enviar el correo a esa dirección. Verificá que la cuenta esté registrada o pedile al administrador que te asigne una clave provisoria desde la sección de administración.';
-        } else if (msg.includes('rate limit') || (error as any)?.status === 429) {
-          msg = 'Superaste el límite de envíos por hora de Supabase. Por favor aguardá unos minutos antes de intentar de nuevo.';
-        } else if (msg.includes('redirect')) {
-          msg = 'La URL de redirección no está permitida en Supabase. Agregala en Supabase -> Authentication -> URL Configuration -> Redirect URLs.';
-        }
-        setResetError(msg);
+      if (res?.error) {
+        setResetError(res.error);
       } else {
         setResetSent(true);
       }
