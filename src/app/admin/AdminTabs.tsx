@@ -9,7 +9,19 @@ type UserRow = {
   display_name: string | null;
   is_admin: boolean;
   is_approved: boolean;
+  created_at: string | null;
 };
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '—';
+  return new Intl.DateTimeFormat('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso));
+}
 
 type MatchRow = {
   id: string;
@@ -119,49 +131,76 @@ export default function AdminTabs({
               ✅ No hay solicitudes pendientes.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '0.9rem' }}>
               {pending.map((u) => (
                 <div
                   key={u.id}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    flexWrap: 'wrap',
-                    padding: '0.85rem 1rem',
-                    borderRadius: 12,
+                    flexDirection: 'column',
+                    padding: '1.1rem 1.2rem',
+                    borderRadius: 14,
                     background: 'var(--color-bg-inset)',
-                    border: '1px solid rgba(248,113,113,0.25)',
+                    border: '1px solid rgba(248,113,113,0.3)',
                   }}
                 >
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      color: '#00122e',
-                    }}
-                  >
-                    {(u.display_name || u.email).substring(0, 2).toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {u.email}
+                  {/* Encabezado: avatar + nombre + estado */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <div
+                      style={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: '50%',
+                        flexShrink: 0,
+                        background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        fontSize: '1.05rem',
+                        color: '#00122e',
+                      }}
+                    >
+                      {(u.display_name || u.email).substring(0, 2).toUpperCase()}
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                      {u.display_name || '—'}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.2 }}>
+                        {u.display_name || 'Sin nombre'}
+                      </div>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          marginTop: 4,
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          color: 'var(--color-warning)',
+                          background: 'rgba(251,191,36,0.14)',
+                          padding: '2px 9px',
+                          borderRadius: 999,
+                        }}
+                      >
+                        Pendiente de aprobación
+                      </span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <form action={approveUser}>
+
+                  {/* Datos completos, legibles */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginBottom: '1.1rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</div>
+                      <div style={{ fontSize: '0.95rem', wordBreak: 'break-all', userSelect: 'all' }}>{u.email}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Solicitó unirse</div>
+                      <div style={{ fontSize: '0.95rem' }}>{formatDate(u.created_at)}</div>
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
+                    <form action={approveUser} style={{ flex: 1 }}>
                       <input type="hidden" name="userId" value={u.id} />
-                      <button type="submit" className="btn-primary" style={{ background: 'var(--color-success)' }}>
+                      <button type="submit" className="btn-primary" style={{ width: '100%', background: 'var(--color-success)' }}>
                         ✓ Aprobar
                       </button>
                     </form>
