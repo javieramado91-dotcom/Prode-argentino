@@ -91,6 +91,34 @@ Para que Vercel lo despliegue solo en cada `git push`:
 > No hace falta configurar `API_FOOTBALL_KEY` ni `ESPN_LEAGUE_SLUG`: la fuente de datos
 > es ESPN (gratis, sin key) y ya trae un valor por defecto.
 
+### (Recomendado) Sincronización automática para TODOS los usuarios
+
+La app sincroniza los partidos sola apenas cada usuario entra o refresca. Para que esa
+escritura funcione para cualquier usuario (no solo el admin), agregá en Vercel →
+**Settings → Environment Variables** la clave secreta de Supabase:
+
+| Name | Value |
+|------|-------|
+| `SUPABASE_SERVICE_ROLE_KEY` | *(Supabase → Settings → API → **service_role**)* |
+
+> Es **secreta**: se usa solo en el servidor, nunca llega al navegador. Sin ella, la
+> sincronización automática la dispara únicamente el admin cuando entra (o con el botón
+> del panel); el resto de los usuarios ven la última fecha sincronizada.
+
+## Cómo se ve y se juega (mobile-first)
+
+El dashboard está dividido en **secciones con pestañas**, pensadas para el celular:
+
+- **Por jugar** — próximos partidos que podés pronosticar (hasta **3 fechas** hacia
+  adelante), agrupados por fecha.
+- **En vivo** — partidos en curso, con marcador que se actualiza solo.
+- **Resultados** — partidos finalizados con tu puntaje.
+- **Calendario** — todas las fechas (pasadas, presentes y futuras) para consultar.
+- **Ranking** — tabla general, exportable a imagen.
+
+Los partidos que están a más de 3 fechas se ven en el calendario con un ⏳ y se habilitan
+para pronosticar cuando se acercan. Cada pronóstico se bloquea a la hora de inicio.
+
 ## Gamificación ya incluida
 
 - **Perfil estilo videojuego** (`/perfil`): puntos, % de aciertos, partidos jugados,
