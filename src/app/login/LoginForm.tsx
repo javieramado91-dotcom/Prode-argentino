@@ -54,8 +54,8 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
         else if (error && typeof error.message === 'string') msg = error.message;
         else if (error) msg = JSON.stringify(error);
 
-        if (!msg || msg === '[]' || msg === '{}' || msg.includes('object')) {
-          msg = 'No se pudo enviar el correo. Asegurate de haber agregado la URL en Supabase (Authentication -> URL Configuration -> Redirect URLs).';
+        if (!msg || msg === '[]' || msg === '{}' || msg.includes('object') || (error as any)?.status === 500) {
+          msg = 'No se pudo enviar el correo a esa dirección. Verificá que la cuenta esté registrada o pedile al administrador que te asigne una clave provisoria desde la sección de administración.';
         } else if (msg.includes('rate limit') || (error as any)?.status === 429) {
           msg = 'Superaste el límite de envíos por hora de Supabase. Por favor aguardá unos minutos antes de intentar de nuevo.';
         } else if (msg.includes('redirect')) {
