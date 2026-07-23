@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import MatchCard, { MatchProps } from '../MatchCard/MatchCard';
 import Leaderboard from '../Leaderboard/Leaderboard';
 import styles from './DashboardSections.module.css';
+import { RESULT_ROUNDS_BACK } from '@/lib/prode';
 
 type UserScore = { id: string; name: string; points: number };
 
@@ -90,7 +91,11 @@ export default function DashboardSections({
 
   const resultadoGroups = useMemo(() => {
     const list = matches.filter((m) => m.status === 'finished');
-    return groupByRound(list).sort((a, b) => b[0].localeCompare(a[0]));
+    // Las últimas fechas finalizadas (las más recientes primero).
+    // El historial completo queda siempre disponible en el Calendario.
+    return groupByRound(list)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, RESULT_ROUNDS_BACK);
   }, [matches]);
 
   const calendarioGroups = useMemo(

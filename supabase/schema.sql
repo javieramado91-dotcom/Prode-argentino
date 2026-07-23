@@ -379,6 +379,42 @@ as $$
   order by points desc, display_name asc;
 $$;
 
+-- ---------------------------------------------------------------------------
+-- 6c) Pronósticos de compañeros de torneo
+--     Solo visibles cuando el partido YA EMPEZÓ (en vivo o finalizado):
+--     antes de la hora de inicio nadie puede espiar ni copiarse.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.get_match_predictions(mid uuid)
+returns table (display_name text, predicted_home_score int, predicted_away_score int, points_earned int)
+language sql
+security definer set search_path = public
+stable
+as $$
+  select coalesce(u.display_name, split_part(u.email, '@', 1)) as display_name,
+         p.predicted_home_score,
+         p.predicted_away_score,
+         p.points_earned
+  from public.predictions p
+  join public.users u on u.id = p.user_id
+  join public.matches m on m.id = p.match_id
+  where p.match_id = mid
+    -- el partido tiene que haber empezado (por estado o por hora)
+    and (m.status <> 'pending' or m.match_date <= now())
+    -- se ven los propios y los de quienes comparten al menos un torneo
+    and (
+      p.user_id = auth.uid()
+      or exists (
+        select 1
+        from public.group_members a
+        join public.group_members b on b.group_id = a.group_id
+        where a.user_id = auth.uid()
+          and b.user_id = p.user_id
+      )
+    )
+  order by p.points_earned desc nulls last, display_name asc;
+$$;
+
 -- RLS: lectura para miembros; la escritura pasa por las RPC de arriba.
 alter table public.groups enable row level security;
 drop policy if exists groups_select on public.groups;

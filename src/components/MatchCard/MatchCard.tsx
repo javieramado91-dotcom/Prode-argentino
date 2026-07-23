@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import styles from './MatchCard.module.css';
-import { savePrediction } from '@/app/dashboard/actions';
+import { savePrediction, getMatchPredictions, MatchPredictionRow } from '@/app/dashboard/actions';
 
 export interface MatchProps {
   id: string;
@@ -29,6 +29,23 @@ export default function MatchCard({ match }: { match: MatchProps }) {
   const [homeInput, setHomeInput] = useState(match.userPrediction?.home?.toString() || '');
   const [awayInput, setAwayInput] = useState(match.userPrediction?.away?.toString() || '');
   const [isSaving, startTransition] = useTransition();
+
+  // Pronósticos de compañeros de torneo (solo partidos empezados/terminados).
+  const [showPreds, setShowPreds] = useState(false);
+  const [preds, setPreds] = useState<MatchPredictionRow[] | null>(null);
+  const [predsError, setPredsError] = useState<string | null>(null);
+
+  const togglePreds = async () => {
+    const next = !showPreds;
+    setShowPreds(next);
+    if (next && preds === null) {
+      try {
+        setPreds(await getMatchPredictions(match.id));
+      } catch (e: any) {
+        setPredsError(e.message || 'Error al cargar.');
+      }
+    }
+  };
 
   const dateObj = new Date(match.matchDate);
   // Se bloquea a la hora de inicio, aunque la sincronización todavía no haya
@@ -165,6 +182,66 @@ export default function MatchCard({ match }: { match: MatchProps }) {
           </div>
         );
       })()}
+
+      {(isLive || isFinished) && (
+        <div style={{ marginTop: '0.75rem' }}>
+          <button
+            type="button"
+            onClick={togglePreds}
+            style={{
+              width: '100%', padding: '0.5rem', borderRadius: 8, cursor: 'pointer',
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+              color: 'var(--color-text-muted)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600,
+            }}
+          >
+            {showPreds ? '▲ Ocultar pronósticos del torneo' : '▼ Ver pronósticos del torneo'}
+          </button>
+
+          {showPreds && (
+            <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              {predsError && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-danger)', textAlign: 'center' }}>{predsError}</div>
+              )}
+              {preds !== null && preds.length === 0 && !predsError && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '0.4rem' }}>
+                  Nadie de tus torneos pronosticó este partido.
+                </div>
+              )}
+              {preds === null && !predsError && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '0.4rem' }}>
+                  Cargando…
+                </div>
+              )}
+              {(preds || []).map((p, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '0.4rem 0.6rem', borderRadius: 6, background: 'rgba(0,0,0,0.2)',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '55%' }}>
+                    {p.display_name}
+                  </span>
+                  <span style={{ fontWeight: 700 }}>
+                    {p.predicted_home_score} - {p.predicted_away_score}
+                  </span>
+                  {isFinished && p.points_earned != null ? (
+                    <span style={{ color: p.points_earned > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', fontWeight: 700, minWidth: '3.2rem', textAlign: 'right' }}>
+                      +{p.points_earned} pts
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--color-text-muted)', minWidth: '3.2rem', textAlign: 'right', fontSize: '0.75rem' }}>
+                      en juego
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

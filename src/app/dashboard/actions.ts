@@ -69,3 +69,26 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
   revalidatePath('/dashboard');
   return { success: true };
 }
+
+export type MatchPredictionRow = {
+  display_name: string;
+  predicted_home_score: number;
+  predicted_away_score: number;
+  points_earned: number | null;
+};
+
+// Pronósticos de tus compañeros de torneo para un partido.
+// La función SQL solo devuelve filas si el partido ya empezó (en vivo o
+// finalizado) y solo de personas con las que compartís al menos un torneo.
+export async function getMatchPredictions(matchId: string): Promise<MatchPredictionRow[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Debes iniciar sesión.');
+
+  const { data, error } = await supabase.rpc('get_match_predictions', { mid: matchId });
+  if (error) {
+    console.error('get_match_predictions:', error.message);
+    throw new Error('No se pudieron cargar los pronósticos.');
+  }
+  return data || [];
+}
