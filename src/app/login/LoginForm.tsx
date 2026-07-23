@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { login, signup } from './actions';
+import { createClient } from '@/lib/supabase/client';
 import styles from './page.module.css';
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -27,7 +28,28 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
   const [showPw2, setShowPw2] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  // Recuperación de contraseña
+  const [forgot, setForgot] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+
   const isRegister = mode === 'register';
+
+  const sendReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    if (!resetEmail.trim()) { setResetError('Ingresá tu email.'); return; }
+    setResetLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+      redirectTo: `${window.location.origin}/reset`,
+    });
+    setResetLoading(false);
+    if (error) setResetError(error.message);
+    else setResetSent(true);
+  };
 
   const switchMode = (m: 'login' | 'register') => {
     setMode(m);
@@ -54,6 +76,47 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
       setLocalError('Las contraseñas no coinciden.');
     }
   };
+
+  // --- Vista: recuperar contraseña ---
+  if (forgot) {
+    return (
+      <div className={styles.modeSwap}>
+        <p className={styles.subtitle}>
+          Te enviamos un enlace por email para crear una contraseña nueva.
+        </p>
+        {resetSent ? (
+          <>
+            <div className={styles.infoBox}>
+              Listo. Revisá tu correo (y la carpeta de spam) y abrí el enlace desde este mismo celular.
+            </div>
+            <button type="button" className={styles.btnLogin} style={{ width: '100%' }}
+              onClick={() => { setForgot(false); setResetSent(false); }}>
+              Volver
+            </button>
+          </>
+        ) : (
+          <form className={styles.form} onSubmit={sendReset}>
+            {resetError && <div className={styles.errorBox}>{resetError}</div>}
+            <div className={styles.inputGroup}>
+              <label htmlFor="resetEmail">Tu email</label>
+              <input id="resetEmail" type="email" placeholder="tu@email.com" required
+                value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} autoComplete="email" />
+            </div>
+            <div className={styles.actions}>
+              <button type="submit" className={styles.btnLogin} disabled={resetLoading}>
+                {resetLoading ? 'Enviando…' : 'Enviarme el enlace'}
+              </button>
+            </div>
+          </form>
+        )}
+        <p className={styles.modeHint}>
+          <button type="button" className={styles.linkBtn} onClick={() => { setForgot(false); setResetSent(false); setResetError(null); }}>
+            ← Volver al inicio de sesión
+          </button>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -134,6 +197,15 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
                   <EyeIcon open={showPw2} />
                 </button>
               </div>
+            </div>
+          )}
+
+          {!isRegister && (
+            <div style={{ textAlign: 'right', marginTop: '-0.4rem' }}>
+              <button type="button" className={styles.linkBtn} style={{ fontSize: '0.82rem', fontWeight: 600 }}
+                onClick={() => { setForgot(true); setResetError(null); }}>
+                ¿Olvidaste tu contraseña?
+              </button>
             </div>
           )}
 
