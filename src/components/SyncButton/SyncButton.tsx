@@ -11,14 +11,17 @@ export default function SyncButton() {
     setMessage('Sincronizando con ESPN...');
     
     try {
-      const res = await fetch('/api/sync-matches', { method: 'POST' });
+      const res = await fetch('/api/sync-matches?force=1', { method: 'POST' });
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || 'Error desconocido');
       }
-      
-      setMessage(`¡Éxito! ${data.count} partidos actualizados.`);
+      if (data.skipped) {
+        throw new Error(data.detail || 'No se pudo escribir (¿falta la service_role key?)');
+      }
+
+      setMessage(`¡Éxito! ${data.count} partidos sincronizados.`);
       
       // Recargar la página para ver los cambios si hubiera una lista de partidos
       setTimeout(() => {

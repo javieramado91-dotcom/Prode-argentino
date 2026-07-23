@@ -15,6 +15,9 @@ export interface MatchProps {
   homeScore?: number;
   awayScore?: number;
   featured?: boolean;
+  round?: string;
+  /** Si es false, el partido es futuro pero aún fuera de la ventana de predicción. */
+  predictable?: boolean;
   userPrediction?: {
     home: number;
     away: number;
@@ -31,7 +34,11 @@ export default function MatchCard({ match }: { match: MatchProps }) {
   // Se bloquea a la hora de inicio, aunque la sincronización todavía no haya
   // cambiado el estado del partido.
   const hasStarted = dateObj.getTime() <= Date.now();
-  const isLocked = match.status !== 'pending' || hasStarted;
+  // Se puede predecir solo si está pendiente, no empezó y está dentro de la
+  // ventana de predicción (próximas fechas).
+  const canPredict = match.predictable !== false && match.status === 'pending' && !hasStarted;
+  const isLocked = !canPredict;
+  const notYetOpen = match.predictable === false && match.status === 'pending' && !hasStarted;
   const isFinished = match.status === 'finished';
   const isLive = match.status === 'in_progress';
 
@@ -80,9 +87,11 @@ export default function MatchCard({ match }: { match: MatchProps }) {
           <span className={styles.dateTag}>{dateFormatted}</span>
         )}
         
-        {isLocked && !isFinished && (
+        {notYetOpen ? (
+          <span className={styles.lockIcon} title="Se habilita en las próximas fechas">⏳</span>
+        ) : isLocked && !isFinished ? (
           <span className={styles.lockIcon} title="Pronóstico bloqueado">🔒</span>
-        )}
+        ) : null}
       </div>
 
       <div className={styles.body}>
@@ -120,6 +129,10 @@ export default function MatchCard({ match }: { match: MatchProps }) {
             <div className={styles.actualScore}>
               Resultado: {match.homeScore} - {match.awayScore}
             </div>
+          )}
+
+          {notYetOpen && (
+            <div className={styles.actualScore}>Se habilita en las próximas fechas</div>
           )}
 
           {!isLocked && (

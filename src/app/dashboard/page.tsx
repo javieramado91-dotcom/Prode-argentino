@@ -1,13 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import MatchList from '@/components/MatchList/MatchList'
 import { MatchProps } from '@/components/MatchCard/MatchCard'
-import Leaderboard from '@/components/Leaderboard/Leaderboard'
 import LiveRefresher from '@/components/LiveRefresher/LiveRefresher'
+import AutoSync from '@/components/AutoSync/AutoSync'
+import DashboardSections from '@/components/DashboardSections/DashboardSections'
 import { LogoMark } from '@/components/Logo/Logo'
 
 export const dynamic = 'force-dynamic'
+
+// Cuántas fechas hacia adelante se pueden pronosticar.
+const PREDICTABLE_ROUNDS = 3
 
 type LeaderboardRow = { user_id: string; display_name: string; points: number }
 
@@ -35,15 +38,27 @@ export default async function DashboardPage() {
     .select('*')
     .eq('user_id', user.id)
 
-  // Ranking global real (función SECURITY DEFINER que suma puntos por usuario).
   const { data: leaderboard } = await supabase.rpc('get_leaderboard')
   const board: LeaderboardRow[] = leaderboard || []
-
   const myPoints = board.find((r) => r.user_id === user.id)?.points ?? 0
   const myPosition = board.findIndex((r) => r.user_id === user.id) + 1
 
+  // Ventana de predicción: las próximas PREDICTABLE_ROUNDS fechas (por su round).
+  const now = Date.now()
+  const upcomingRounds = Array.from(
+    new Set(
+      (dbMatches || [])
+        .filter((m: any) => m.status === 'pending' && new Date(m.match_date).getTime() > now)
+        .map((m: any) => m.round as string)
+    )
+  )
+    .sort()
+    .slice(0, PREDICTABLE_ROUNDS)
+  const predictableRounds = new Set(upcomingRounds)
+
   const realMatches: MatchProps[] = (dbMatches || []).map((m: any) => {
     const pred = predictions?.find((p: any) => p.match_id === m.id)
+    const isFuturePending = m.status === 'pending' && new Date(m.match_date).getTime() > now
     return {
       id: m.id,
       homeTeam: m.home_team,
@@ -55,6 +70,8 @@ export default async function DashboardPage() {
       homeScore: m.home_score,
       awayScore: m.away_score,
       featured: m.featured,
+      round: m.round,
+      predictable: isFuturePending && predictableRounds.has(m.round),
       userPrediction: pred
         ? {
             home: pred.predicted_home_score,
@@ -66,72 +83,51 @@ export default async function DashboardPage() {
   })
 
   const hasLive = realMatches.some((m) => m.status === 'in_progress')
-  const roundTitle = dbMatches?.[0]?.round
-    ? `${dbMatches[0].round} — Liga Profesional`
-    : 'Próxima Fecha — Liga Profesional'
-
-  const boardUsers = board.map((r) => ({
-    id: r.user_id,
-    name: r.display_name,
-    points: r.points,
-  }))
+  const boardUsers = board.map((r) => ({ id: r.user_id, name: r.display_name, points: r.points }))
 
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Refresca la página automáticamente mientras haya partidos en vivo. */}
+      {/* Sincroniza al entrar/refrescar y auto-refresca si hay partidos en vivo. */}
+      <AutoSync />
       <LiveRefresher active={hasLive} intervalMs={30000} />
 
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <LogoMark size={52} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
           <div>
-          <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.5rem)', margin: '0 0 0.5rem 0' }}>Prode Argentino</h1>
-          <p style={{ color: 'var(--color-text-muted)' }}>
-            Bienvenido, {profile.display_name || user.email}
-            {myPosition > 0 && (
-              <> · <strong style={{ color: 'var(--color-accent)' }}>#{myPosition}</strong> en el ranking</>
-            )}
-          </p>
+            <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.5rem)', margin: '0 0 0.25rem 0' }}>Prode Argentino</h1>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+              Hola, {profile.display_name || user.email}
+              {myPosition > 0 && (
+                <> · <strong style={{ color: 'var(--color-accent)' }}>#{myPosition}</strong></>
+              )}
+            </p>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>
-            👥 Grupos
-          </Link>
-          <Link href="/perfil" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>
-            👤 Mi Perfil
-          </Link>
-          {profile?.is_admin && (
-            <Link href="/admin" className="btn-primary" style={{ background: 'var(--color-secondary)' }}>
-              👑 Panel Admin
-            </Link>
-          )}
           <div className="glass-panel" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>Puntos Globales</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Puntos</span>
             <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-accent)' }}>{myPoints}</span>
           </div>
+          <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>👥 Grupos</Link>
+          <Link href="/perfil" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>👤 Perfil</Link>
+          {profile?.is_admin && (
+            <Link href="/admin" className="btn-primary" style={{ background: 'var(--color-secondary)' }}>👑 Admin</Link>
+          )}
           <form action="/auth/signout" method="post">
-            <button className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--color-danger)', color: 'var(--color-danger)' }}>
-              Cerrar Sesión
-            </button>
+            <button className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--color-danger)', color: 'var(--color-danger)' }}>Salir</button>
           </form>
         </div>
       </header>
 
-      <section>
-        {realMatches.length > 0 ? (
-          <MatchList title={roundTitle} matches={realMatches} />
-        ) : (
-          <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            Todavía no hay partidos cargados. El administrador debe sincronizar la fecha desde el Panel Admin.
-          </div>
-        )}
-      </section>
-
-      <section>
-        <Leaderboard title="Ranking Principal" users={boardUsers} />
-      </section>
+      {realMatches.length > 0 ? (
+        <DashboardSections matches={realMatches} users={boardUsers} />
+      ) : (
+        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+          Cargando los partidos de la Liga Profesional… Si no aparecen, actualizá la página en unos segundos.
+        </div>
+      )}
     </main>
   )
 }
