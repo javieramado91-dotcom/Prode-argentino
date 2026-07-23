@@ -48,8 +48,10 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
     });
     setResetLoading(false);
     if (error) {
-      let msg = error.message;
-      if (msg.includes('rate limit') || error.status === 429) {
+      let msg = typeof error.message === 'string' ? error.message : '';
+      if (!msg || msg === '[]' || msg === '{}' || msg === '[object Object]') {
+        msg = 'No se pudo enviar el correo de recuperación. Verificá tu email e intentá de nuevo.';
+      } else if (msg.includes('rate limit') || (error as any).status === 429) {
         msg = 'Superaste el límite de envíos por hora de Supabase. Por favor aguardá unos minutos antes de intentar de nuevo.';
       } else if (msg.includes('redirect')) {
         msg = 'La URL de redirección no está permitida en Supabase. Agregala en Supabase -> Authentication -> URL Configuration -> Redirect URLs.';

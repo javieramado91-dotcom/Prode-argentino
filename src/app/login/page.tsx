@@ -8,8 +8,10 @@ export default async function LoginPage(props: {
   const searchParams = await props.searchParams
   const initialMode = searchParams.mode === 'register' ? 'register' : 'login'
   const hasError = searchParams.error === 'true'
-  const errorMessage = searchParams.message
-  const infoMessage = searchParams.info
+  let errorMessage = searchParams.message
+  if (errorMessage === '[]' || errorMessage === '{}' || errorMessage === '[object Object]') {
+    errorMessage = 'Ocurrió un error al intentar ingresar. Por favor verifica tus datos e intenta nuevamente.'
+  }
 
   return (
     <main className={styles.container}>
