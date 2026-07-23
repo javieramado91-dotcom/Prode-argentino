@@ -42,23 +42,32 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
     setResetError(null);
     if (!resetEmail.trim()) { setResetError('Ingresá tu email.'); return; }
     setResetLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-      redirectTo: `${window.location.origin}/reset`,
-    });
-    setResetLoading(false);
-    if (error) {
-      let msg = typeof error.message === 'string' ? error.message : '';
-      if (!msg || msg === '[]' || msg === '{}' || msg === '[object Object]') {
-        msg = 'No se pudo enviar el correo de recuperación. Verificá tu email e intentá de nuevo.';
-      } else if (msg.includes('rate limit') || (error as any).status === 429) {
-        msg = 'Superaste el límite de envíos por hora de Supabase. Por favor aguardá unos minutos antes de intentar de nuevo.';
-      } else if (msg.includes('redirect')) {
-        msg = 'La URL de redirección no está permitida en Supabase. Agregala en Supabase -> Authentication -> URL Configuration -> Redirect URLs.';
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset`,
+      });
+      setResetLoading(false);
+      if (error) {
+        let msg = '';
+        if (typeof error === 'string') msg = error;
+        else if (error && typeof error.message === 'string') msg = error.message;
+        else if (error) msg = JSON.stringify(error);
+
+        if (!msg || msg === '[]' || msg === '{}' || msg.includes('object')) {
+          msg = 'No se pudo enviar el correo. Asegurate de haber agregado la URL en Supabase (Authentication -> URL Configuration -> Redirect URLs).';
+        } else if (msg.includes('rate limit') || (error as any)?.status === 429) {
+          msg = 'Superaste el límite de envíos por hora de Supabase. Por favor aguardá unos minutos antes de intentar de nuevo.';
+        } else if (msg.includes('redirect')) {
+          msg = 'La URL de redirección no está permitida en Supabase. Agregala en Supabase -> Authentication -> URL Configuration -> Redirect URLs.';
+        }
+        setResetError(msg);
+      } else {
+        setResetSent(true);
       }
-      setResetError(msg);
-    } else {
-      setResetSent(true);
+    } catch (err: any) {
+      setResetLoading(false);
+      setResetError('No se pudo procesar la solicitud. Por favor intenta de nuevo.');
     }
   };
 
