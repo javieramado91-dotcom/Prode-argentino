@@ -47,8 +47,17 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
       redirectTo: `${window.location.origin}/reset`,
     });
     setResetLoading(false);
-    if (error) setResetError(error.message);
-    else setResetSent(true);
+    if (error) {
+      let msg = error.message;
+      if (msg.includes('rate limit') || error.status === 429) {
+        msg = 'Superaste el límite de envíos por hora de Supabase. Por favor aguardá unos minutos antes de intentar de nuevo.';
+      } else if (msg.includes('redirect')) {
+        msg = 'La URL de redirección no está permitida en Supabase. Agregala en Supabase -> Authentication -> URL Configuration -> Redirect URLs.';
+      }
+      setResetError(msg);
+    } else {
+      setResetSent(true);
+    }
   };
 
   const switchMode = (m: 'login' | 'register') => {

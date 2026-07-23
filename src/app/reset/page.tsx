@@ -32,10 +32,22 @@ export default function ResetPage() {
   useEffect(() => {
     let active = true;
     const run = async () => {
-      // Si ya hay sesión (p. ej. flujo implícito por hash), listo.
+      // 1. Escuchar eventos de autenticación (p. ej. PASSWORD_RECOVERY)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!active) return;
+        if (event === 'PASSWORD_RECOVERY' || session) {
+          setReady(true);
+        }
+      });
+
+      // 2. Si ya hay sesión activa
       const { data: sessionData } = await supabase.auth.getSession();
       if (!active) return;
-      if (sessionData.session) { setReady(true); return; }
+      if (sessionData.session) {
+        setReady(true);
+        subscription.unsubscribe();
+        return;
+      }
 
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
@@ -43,10 +55,20 @@ export default function ResetPage() {
 
       if (errDesc) {
         setFatal(decodeURIComponent(errDesc));
+        subscription.unsubscribe();
         return;
       }
+
+      // Si viene por Hash (#access_token=... o #type=recovery)
+      if (window.location.hash.includes('access_token') || window.location.hash.includes('type=recovery')) {
+        setReady(true);
+        subscription.unsubscribe();
+        return;
+      }
+
       if (!code) {
         setFatal('Abrí esta página desde el enlace que te llegó por email, en el mismo navegador.');
+        subscription.unsubscribe();
         return;
       }
 
@@ -54,11 +76,12 @@ export default function ResetPage() {
       if (!active) return;
       if (error) {
         setFatal(
-          'No se pudo validar el enlace. Suele pasar si se abre en un navegador distinto al que pediste el cambio. Pedí uno nuevo y abrilo en Chrome.'
+          'No se pudo validar el enlace. Suele pasar si el enlace ya vence, o si se abre en un navegador diferente al que pediste el cambio. Pedí uno nuevo y abrilo en el mismo navegador.'
         );
       } else {
         setReady(true);
       }
+      subscription.unsubscribe();
     };
     run();
     return () => { active = false; };
