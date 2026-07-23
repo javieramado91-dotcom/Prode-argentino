@@ -29,19 +29,34 @@ export default async function GrupoDetallePage(props: {
   const rows: Row[] = data || []
   const users = rows.map((r) => ({ id: r.user_id, name: r.display_name, points: r.points }))
 
+  const inviteText = encodeURIComponent(
+    `⚽ ¡Sumate a mi torneo "${group.name}" en el Prode Argentino!\n\n1. Entrá a https://prode-argentino.vercel.app\n2. Registrate y andá a "Grupos"\n3. Unite con el código: ${group.invite_code}`
+  )
+
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="gradient-text" style={{ fontSize: '2rem', margin: '0 0 0.25rem 0' }}>{group.name}</h1>
+          <h1 className="gradient-text" style={{ fontSize: 'clamp(1.5rem, 6vw, 2rem)', margin: '0 0 0.25rem 0' }}>{group.name}</h1>
           <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>
             Código para invitar: <strong style={{ color: 'var(--color-accent)', letterSpacing: 1 }}>{group.invite_code}</strong>
           </p>
         </div>
-        <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>← Mis grupos</Link>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <a
+            href={`https://wa.me/?text=${inviteText}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary"
+            style={{ background: '#25D366', textDecoration: 'none' }}
+          >
+            📲 Invitar por WhatsApp
+          </a>
+          <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>← Mis torneos</Link>
+        </div>
       </header>
 
-      <Leaderboard title="Ranking del grupo" users={users} />
+      <Leaderboard title="Ranking del torneo" users={users} />
     </main>
   )
 }

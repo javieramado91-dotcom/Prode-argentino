@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { LogoMark } from '@/components/Logo/Logo'
 
 export default async function LoginPage(props: {
-  searchParams: Promise<{ mode?: string; error?: string; message?: string }>
+  searchParams: Promise<{ mode?: string; error?: string; message?: string; info?: string }>
 }) {
   const searchParams = await props.searchParams
   const isRegister = searchParams.mode === 'register'
   const hasError = searchParams.error === 'true'
   const errorMessage = searchParams.message
+  const infoMessage = searchParams.info
 
   return (
     <main className={styles.container}>
@@ -24,6 +25,10 @@ export default async function LoginPage(props: {
           <div className={styles.errorBox}>
             {errorMessage || 'Ocurrió un error. Por favor intenta nuevamente.'}
           </div>
+        )}
+
+        {infoMessage && !hasError && (
+          <div className={styles.infoBox}>{infoMessage}</div>
         )}
         
         <form className={styles.form}>

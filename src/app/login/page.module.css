@@ -146,6 +146,17 @@
   text-align: center;
 }
 
+.infoBox {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #a7f3d0;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .toggleMode {
   margin-top: 1.5rem;
   text-align: center;

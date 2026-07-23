@@ -6,11 +6,9 @@ import LiveRefresher from '@/components/LiveRefresher/LiveRefresher'
 import AutoSync from '@/components/AutoSync/AutoSync'
 import DashboardSections from '@/components/DashboardSections/DashboardSections'
 import { LogoMark } from '@/components/Logo/Logo'
+import { PREDICTABLE_ROUNDS } from '@/lib/prode'
 
 export const dynamic = 'force-dynamic'
-
-// Cuántas fechas hacia adelante se pueden pronosticar.
-const PREDICTABLE_ROUNDS = 3
 
 type LeaderboardRow = { user_id: string; display_name: string; points: number }
 
@@ -110,7 +108,7 @@ export default async function DashboardPage() {
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Puntos</span>
             <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-accent)' }}>{myPoints}</span>
           </div>
-          <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>👥 Grupos</Link>
+          <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>🏆 Torneos</Link>
           <Link href="/perfil" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>👤 Perfil</Link>
           {profile?.is_admin && (
             <Link href="/admin" className="btn-primary" style={{ background: 'var(--color-secondary)' }}>👑 Admin</Link>

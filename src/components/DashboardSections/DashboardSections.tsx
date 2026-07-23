@@ -9,17 +9,21 @@ type UserScore = { id: string; name: string; points: number };
 
 type TabKey = 'jugar' | 'vivo' | 'resultados' | 'calendario' | 'ranking';
 
+function roundKey(m: MatchProps): string {
+  return m.round || m.matchDate.slice(0, 10);
+}
+
 function groupByRound(matches: MatchProps[]): [string, MatchProps[]][] {
   const map = new Map<string, MatchProps[]>();
   for (const m of matches) {
-    const key = m.round || m.matchDate.slice(0, 10);
+    const key = roundKey(m);
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(m);
   }
   return [...map.entries()];
 }
 
-function roundLabel(matches: MatchProps[]): string {
+function dateRange(matches: MatchProps[]): string {
   const dates = matches
     .map((m) => new Date(m.matchDate))
     .sort((a, b) => a.getTime() - b.getTime());
@@ -27,20 +31,30 @@ function roundLabel(matches: MatchProps[]): string {
   const max = dates[dates.length - 1];
   const fmt = (d: Date) =>
     new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(d);
-  return min.toDateString() === max.toDateString()
-    ? `Fecha · ${fmt(min)}`
-    : `Fecha · ${fmt(min)} al ${fmt(max)}`;
+  return min.toDateString() === max.toDateString() ? fmt(min) : `${fmt(min)} al ${fmt(max)}`;
 }
 
-function Groups({ groups, empty }: { groups: [string, MatchProps[]][]; empty: string }) {
+function Groups({
+  groups,
+  numbers,
+  empty,
+}: {
+  groups: [string, MatchProps[]][];
+  numbers: Map<string, number>;
+  empty: string;
+}) {
   if (groups.length === 0) return <div className={styles.empty}>{empty}</div>;
   return (
     <>
       {groups.map(([key, matches]) => (
         <div key={key} className={styles.group}>
           <div className={styles.groupHeader}>
-            <span className={styles.groupTitle}>{roundLabel(matches)}</span>
-            <span className={styles.groupCount}>{matches.length} partidos</span>
+            <span className={styles.groupTitle}>
+              {numbers.has(key) ? `Fecha ${numbers.get(key)}` : 'Fecha'}
+            </span>
+            <span className={styles.groupCount}>
+              {dateRange(matches)} · {matches.length} partidos
+            </span>
           </div>
           <div className={styles.grid}>
             {matches.map((m) => (
@@ -61,6 +75,13 @@ export default function DashboardSections({
   users: UserScore[];
 }) {
   const live = useMemo(() => matches.filter((m) => m.status === 'in_progress'), [matches]);
+
+  // Numeración de fechas: orden cronológico de todas las fechas conocidas.
+  // Como la base acumula las fechas desde el inicio del torneo, el número es estable.
+  const fechaNumbers = useMemo(() => {
+    const keys = [...new Set(matches.map(roundKey))].sort();
+    return new Map(keys.map((k, i) => [k, i + 1]));
+  }, [matches]);
 
   const jugarGroups = useMemo(() => {
     const list = matches.filter((m) => m.predictable && m.status === 'pending');
@@ -122,6 +143,7 @@ export default function DashboardSections({
       {tab === 'jugar' && (
         <Groups
           groups={jugarGroups}
+          numbers={fechaNumbers}
           empty="No hay partidos abiertos para pronosticar por ahora. Volvé cuando se acerque la próxima fecha."
         />
       )}
@@ -141,11 +163,11 @@ export default function DashboardSections({
       )}
 
       {tab === 'resultados' && (
-        <Groups groups={resultadoGroups} empty="Todavía no hay partidos finalizados." />
+        <Groups groups={resultadoGroups} numbers={fechaNumbers} empty="Todavía no hay partidos finalizados." />
       )}
 
       {tab === 'calendario' && (
-        <Groups groups={calendarioGroups} empty="Aún no hay fechas cargadas." />
+        <Groups groups={calendarioGroups} numbers={fechaNumbers} empty="Aún no hay fechas cargadas." />
       )}
 
       {tab === 'ranking' && <Leaderboard title="Ranking general" users={users} />}

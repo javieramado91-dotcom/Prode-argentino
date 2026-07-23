@@ -32,11 +32,18 @@ export default async function AdminPage() {
     .select('*')
     .order('created_at', { ascending: false })
 
-  // Partidos de la fecha vigente (para elegir el "Partido de la Fecha").
-  const { data: matchesList } = await supabase
+  // Solo los partidos de la PRÓXIMA fecha (para elegir el "Partido de la Fecha").
+  const { data: allMatches } = await supabase
     .from('matches')
-    .select('id, home_team, away_team, match_date, featured, status')
+    .select('id, home_team, away_team, match_date, featured, status, round')
     .order('match_date', { ascending: true })
+
+  const nextRound = allMatches?.find(
+    (m: any) => m.status === 'pending' && new Date(m.match_date).getTime() > Date.now()
+  )?.round
+  const matchesList = nextRound
+    ? allMatches?.filter((m: any) => m.round === nextRound)
+    : allMatches?.slice(0, 15)
 
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -64,7 +71,7 @@ export default async function AdminPage() {
         <section className="glass-panel" style={{ padding: '2rem', marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Partido de la Fecha (vale doble)</h2>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-            Elegí un partido destacado: sus puntos valen x2. Solo puede haber uno por fecha.
+            Elegí el partido destacado de la <strong>próxima fecha</strong>: sus puntos valen x2. Solo puede haber uno por fecha.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
             {matchesList.map((m: any) => (

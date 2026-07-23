@@ -150,13 +150,21 @@ export default function MatchCard({ match }: { match: MatchProps }) {
         </div>
       </div>
 
-      {isFinished && match.userPrediction && (
-        <div className={styles.footer}>
-          <div className={`${styles.pointsEarned} ${match.userPrediction.pointsEarned === 6 ? styles.pointsPerfect : match.userPrediction.pointsEarned === 3 ? styles.pointsGood : styles.pointsZero}`}>
-            {match.userPrediction.pointsEarned} Puntos
+      {isFinished && match.userPrediction && (() => {
+        // Con "Partido de la Fecha" los puntos valen doble: exacto 12, ganador 6.
+        const pts = match.userPrediction.pointsEarned ?? 0;
+        const perfect = match.featured ? 12 : 6;
+        const good = match.featured ? 6 : 3;
+        const cls = pts === perfect ? styles.pointsPerfect : pts === good ? styles.pointsGood : styles.pointsZero;
+        const label = pts === perfect ? '🎯 Resultado exacto' : pts === good ? '✔ Ganador acertado' : 'Sin puntos';
+        return (
+          <div className={styles.footer}>
+            <div className={`${styles.pointsEarned} ${cls}`}>
+              {label} · {pts} pts
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

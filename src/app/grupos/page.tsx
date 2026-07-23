@@ -25,7 +25,7 @@ export default async function GruposPage(props: {
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.25rem)', margin: 0 }}>Grupos</h1>
+        <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.25rem)', margin: 0 }}>Torneos entre amigos</h1>
         <Link href="/dashboard" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>← Volver</Link>
       </header>
 
@@ -38,8 +38,8 @@ export default async function GruposPage(props: {
       {/* Crear / Unirse */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
         <form action={createGroupAction} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <h3 style={{ margin: 0, color: 'var(--color-primary)' }}>Crear un grupo</h3>
-          <input name="name" placeholder="Nombre del grupo (ej: Los del asado)" required
+          <h3 style={{ margin: 0, color: 'var(--color-primary)' }}>Crear un torneo</h3>
+          <input name="name" placeholder="Nombre del torneo (ej: Los del asado)" required
             style={{ padding: '0.75rem', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.25)', color: 'var(--color-text-main)' }} />
           <button type="submit" className="btn-primary">Crear</button>
         </form>
@@ -53,9 +53,9 @@ export default async function GruposPage(props: {
       </section>
 
       {/* Mis grupos */}
-      <h2 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>Mis grupos</h2>
+      <h2 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>Mis torneos</h2>
       {groups.length === 0 ? (
-        <p style={{ color: 'var(--color-text-muted)' }}>Todavía no estás en ningún grupo. Creá uno o unite con un código.</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>Todavía no estás en ningún torneo. Creá uno o unite con un código.</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
           {groups.map((g) => (

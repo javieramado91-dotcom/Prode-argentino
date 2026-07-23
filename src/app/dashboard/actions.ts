@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { PREDICTABLE_ROUNDS } from '@/lib/prode';
 
 export async function savePrediction(matchId: string, homeScore: number, awayScore: number) {
   const supabase = await createClient();
@@ -11,10 +12,14 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
     throw new Error('Debes iniciar sesión para predecir.');
   }
 
+  if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore) || homeScore < 0 || awayScore < 0 || homeScore > 99 || awayScore > 99) {
+    throw new Error('Resultado inválido.');
+  }
+
   // 1. Validar que el partido exista y que todavía no haya empezado.
   const { data: match } = await supabase
     .from('matches')
-    .select('status, match_date')
+    .select('status, match_date, round')
     .eq('id', matchId)
     .single();
 
@@ -25,6 +30,22 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
   const hasStarted = new Date(match.match_date).getTime() <= Date.now();
   if (match.status !== 'pending' || hasStarted) {
     throw new Error('El partido ya comenzó o finalizó. No se puede predecir.');
+  }
+
+  // Solo se puede predecir dentro de la ventana de las próximas fechas
+  // (misma regla que muestra la UI, validada también en el servidor).
+  const { data: pendingRounds } = await supabase
+    .from('matches')
+    .select('round, match_date')
+    .eq('status', 'pending')
+    .gt('match_date', new Date().toISOString())
+    .order('match_date', { ascending: true });
+
+  const window = new Set(
+    Array.from(new Set((pendingRounds || []).map((r: any) => r.round))).sort().slice(0, PREDICTABLE_ROUNDS)
+  );
+  if (match.round && !window.has(match.round)) {
+    throw new Error('Ese partido todavía no está habilitado: se puede predecir hasta 3 fechas hacia adelante.');
   }
 
   // 2. Guardar o actualizar la predicción.
