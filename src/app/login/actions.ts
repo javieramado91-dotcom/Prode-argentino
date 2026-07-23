@@ -27,42 +27,32 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
-  // El enlace del mail de confirmación debe volver al dominio desde el que se
-  // registró el usuario (producción o local), nunca a un localhost ajeno.
-  const h = await headers()
-  const origin = h.get('origin') || `https://${h.get('host') || 'prode-argentino.vercel.app'}`
+  const emailRaw = (formData.get('email') as string || '').trim().toLowerCase()
+  const password = formData.get('password') as string
 
   const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+    email: emailRaw,
+    password,
     options: {
       data: {
-        display_name: (formData.get('email') as string).split('@')[0]
-      },
-      emailRedirectTo: `${origin}/login?info=${encodeURIComponent(
-        'Email confirmado. Ya podés iniciar sesión.'
-      )}`
+        display_name: emailRaw.split('@')[0]
+      }
     }
   }
 
-  const { data: signUpData, error } = await supabase.auth.signUp(data)
+  const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect(`/login?mode=register&error=true&message=${encodeURIComponent(error.message)}`)
+    let msg = error.message
+    if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('unique constraint')) {
+      msg = 'Ese email ya está registrado. Podés iniciar sesión o solicitar recuperar tu clave.'
+    }
+    redirect(`/login?mode=register&error=true&message=${encodeURIComponent(msg)}`)
   }
 
-  // Avisar al administrador por email (no bloquea el registro si falla).
-  await notifyAdminNewUser(data.email)
-
-  // Si Supabase exige confirmar el email, no hay sesión todavía: avisar claro.
-  if (!signUpData.session) {
-    redirect(
-      `/login?mode=login&info=${encodeURIComponent(
-        'Cuenta creada. Revisá tu correo y confirmá la cuenta; después iniciá sesión acá.'
-      )}`
-    )
-  }
+  // Avisar al administrador por email de la nueva solicitud
+  await notifyAdminNewUser(emailRaw)
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  redirect('/pending-approval')
 }
