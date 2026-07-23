@@ -49,6 +49,8 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
   }
 
   // 2. Guardar o actualizar la predicción.
+  //    Escribimos también las columnas legacy home_prediction/away_prediction
+  //    (que quedaron NOT NULL del esquema viejo) para no violar la restricción.
   const { error } = await supabase
     .from('predictions')
     .upsert({
@@ -56,6 +58,8 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
       match_id: matchId,
       predicted_home_score: homeScore,
       predicted_away_score: awayScore,
+      home_prediction: homeScore,
+      away_prediction: awayScore,
       updated_at: new Date().toISOString(),
     }, {
       onConflict: 'user_id, match_id'

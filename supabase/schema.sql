@@ -40,6 +40,19 @@ alter table public.predictions add column if not exists predicted_home_score int
 alter table public.predictions add column if not exists predicted_away_score int;
 alter table public.predictions add column if not exists updated_at timestamptz not null default now();
 
+-- Columnas legacy del esquema viejo (home_prediction / away_prediction) que
+-- venían como NOT NULL y rompían el guardado. Las dejamos opcionales.
+do $$ begin
+  if exists (select 1 from information_schema.columns
+             where table_schema='public' and table_name='predictions' and column_name='home_prediction') then
+    alter table public.predictions alter column home_prediction drop not null;
+  end if;
+  if exists (select 1 from information_schema.columns
+             where table_schema='public' and table_name='predictions' and column_name='away_prediction') then
+    alter table public.predictions alter column away_prediction drop not null;
+  end if;
+end $$;
+
 -- Un solo pronóstico por usuario y partido (necesario para el upsert onConflict).
 create unique index if not exists predictions_user_match_key
   on public.predictions (user_id, match_id);
