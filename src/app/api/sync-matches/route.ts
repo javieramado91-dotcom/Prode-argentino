@@ -6,8 +6,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 const ESPN_LEAGUE = process.env.ESPN_LEAGUE_SLUG || 'arg.1'
 
 // Ventana a sincronizar: partidos recientes + en curso + próximas fechas.
-const DAYS_BACK = 21
-const DAYS_AHEAD = 45
+// OJO: ESPN devuelve como máximo 100 eventos por consulta; con una ventana
+// demasiado amplia trunca el final y una fecha puede quedar "a medias".
+// Con ~5 fechas de ventana (≈75-90 partidos) quedamos siempre por debajo
+// del tope. La base acumula el historial igual: nada se pierde.
+const DAYS_BACK = 10
+const DAYS_AHEAD = 28
 
 // Throttle global (por instancia): evita golpear ESPN en cada request.
 const MIN_INTERVAL_MS = 45_000
