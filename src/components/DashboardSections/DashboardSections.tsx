@@ -90,12 +90,21 @@ export default function DashboardSections({
   }, [matches]);
 
   const resultadoGroups = useMemo(() => {
-    const list = matches.filter((m) => m.status === 'finished');
-    // Las últimas fechas finalizadas (las más recientes primero).
-    // El historial completo queda siempre disponible en el Calendario.
-    return groupByRound(list)
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .slice(0, RESULT_ROUNDS_BACK);
+    // Ventana relativa a la fecha ACTUAL: la fecha en curso + 2 hacia atrás.
+    // La fecha actual es la primera que todavía tiene partidos sin terminar;
+    // si el campeonato terminó, es la última. El historial completo queda
+    // siempre disponible en el Calendario.
+    const sortedKeys = [...new Set(matches.map(roundKey))].sort();
+    let curIdx = sortedKeys.findIndex((k) =>
+      matches.some((m) => roundKey(m) === k && m.status !== 'finished')
+    );
+    if (curIdx === -1) curIdx = sortedKeys.length - 1;
+    const window = new Set(
+      sortedKeys.slice(Math.max(0, curIdx - RESULT_ROUNDS_BACK), curIdx + 1)
+    );
+
+    const list = matches.filter((m) => m.status === 'finished' && window.has(roundKey(m)));
+    return groupByRound(list).sort((a, b) => b[0].localeCompare(a[0]));
   }, [matches]);
 
   const calendarioGroups = useMemo(

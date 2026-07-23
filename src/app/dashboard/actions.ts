@@ -45,7 +45,7 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
     Array.from(new Set((pendingRounds || []).map((r: any) => r.round))).sort().slice(0, PREDICTABLE_ROUNDS)
   );
   if (match.round && !window.has(match.round)) {
-    throw new Error('Ese partido todavía no está habilitado: se puede predecir hasta 3 fechas hacia adelante.');
+    throw new Error('Ese partido todavía no está habilitado: se puede predecir la fecha actual y las 2 siguientes.');
   }
 
   // 2. Guardar o actualizar la predicción.
