@@ -25,7 +25,7 @@ export default async function GruposPage(props: {
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 className="gradient-text" style={{ fontSize: '2.25rem', margin: 0 }}>Grupos</h1>
+        <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.25rem)', margin: 0 }}>Grupos</h1>
         <Link href="/dashboard" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>← Volver</Link>
       </header>
 

@@ -1,6 +1,7 @@
 import { login, signup } from './actions'
 import styles from './page.module.css'
 import Link from 'next/link'
+import { LogoMark } from '@/components/Logo/Logo'
 
 export default async function LoginPage(props: {
   searchParams: Promise<{ mode?: string; error?: string; message?: string }>
@@ -13,6 +14,7 @@ export default async function LoginPage(props: {
   return (
     <main className={styles.container}>
       <div className={styles.glassCard}>
+        <LogoMark size={64} style={{ color: 'var(--color-accent)', display: 'block', margin: '0 auto 1rem', filter: 'drop-shadow(0 0 16px var(--color-primary-glow))' }} />
         <h1 className={styles.title}>Prode Argentino</h1>
         <p className={styles.subtitle}>
           {isRegister ? 'Crea tu cuenta para jugar' : 'Ingresa a tu cuenta'}

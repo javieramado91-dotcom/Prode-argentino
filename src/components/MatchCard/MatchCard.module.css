@@ -196,3 +196,33 @@
   70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
+
+/* Ajustes para pantallas de celular */
+@media (max-width: 480px) {
+  .card {
+    padding: 1.25rem 1rem;
+  }
+  .logoCircle {
+    width: 52px;
+    height: 52px;
+    font-size: 1rem;
+  }
+  .team {
+    width: 27%;
+    gap: 0.5rem;
+  }
+  .teamName {
+    font-size: 0.82rem;
+  }
+  .scoreInput {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+  .inputsWrapper {
+    gap: 0.35rem;
+  }
+  .scoreSection {
+    gap: 0.75rem;
+  }
+}

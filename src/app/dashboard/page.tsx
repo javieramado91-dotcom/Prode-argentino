@@ -5,6 +5,7 @@ import MatchList from '@/components/MatchList/MatchList'
 import { MatchProps } from '@/components/MatchCard/MatchCard'
 import Leaderboard from '@/components/Leaderboard/Leaderboard'
 import LiveRefresher from '@/components/LiveRefresher/LiveRefresher'
+import { LogoMark } from '@/components/Logo/Logo'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,17 +82,20 @@ export default async function DashboardPage() {
       <LiveRefresher active={hasLive} intervalMs={30000} />
 
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 className="gradient-text" style={{ fontSize: '2.5rem', margin: '0 0 0.5rem 0' }}>Prode Argentino</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <LogoMark size={52} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+          <div>
+          <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.5rem)', margin: '0 0 0.5rem 0' }}>Prode Argentino</h1>
           <p style={{ color: 'var(--color-text-muted)' }}>
             Bienvenido, {profile.display_name || user.email}
             {myPosition > 0 && (
               <> · <strong style={{ color: 'var(--color-accent)' }}>#{myPosition}</strong> en el ranking</>
             )}
           </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>
             👥 Grupos
           </Link>

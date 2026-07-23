@@ -1,19 +1,21 @@
 import Link from 'next/link';
 import styles from './page.module.css';
+import Logo, { LogoMark } from '@/components/Logo/Logo';
 
 export default function Home() {
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem' }}>
-        <h1 className="gradient-text" style={{ fontSize: '2.5rem' }}>Prode Liga Profesional</h1>
+        <Logo size={48} />
         <nav>
           <Link href="/login" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>Iniciar Sesión</Link>
         </nav>
       </header>
 
       <section style={{ textAlign: 'center', margin: '4rem 0' }}>
-        <h2 style={{ fontSize: '3.5rem', marginBottom: '1.5rem' }}>Demuestra que sabes de fútbol.</h2>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '1.25rem', maxWidth: '600px', margin: '0 auto 2.5rem' }}>
+        <LogoMark size={128} style={{ color: 'var(--color-accent)', filter: 'drop-shadow(0 0 24px var(--color-primary-glow))', marginBottom: '1.5rem' }} />
+        <h2 style={{ fontSize: 'clamp(1.9rem, 8vw, 3.5rem)', marginBottom: '1.5rem', lineHeight: 1.1 }}>Demuestra que sabes de fútbol.</h2>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 'clamp(1rem, 4vw, 1.25rem)', maxWidth: '600px', margin: '0 auto 2.5rem' }}>
           Pronostica los resultados del fútbol argentino, compite con tus amigos y sube en el ranking global en tiempo real.
         </p>
         <Link href="/login" className="btn-primary" style={{ padding: '16px 32px', fontSize: '1.125rem', display: 'inline-block', textDecoration: 'none' }}>

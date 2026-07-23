@@ -137,3 +137,28 @@ h1, h2, h3, h4 {
 .animate-fade-in {
   animation: fadeIn 0.6s var(--transition-normal) forwards;
 }
+
+/* ====== Responsive / Mobile-first ====== */
+@media (max-width: 640px) {
+  /* Reduce el padding lateral de las páginas (varias usan padding inline de 2rem) */
+  main {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-top: 1.25rem !important;
+  }
+  .btn-primary {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+  /* Los grupos de botones de los encabezados se acomodan en varias filas */
+  .glass-panel {
+    border-radius: var(--border-radius-md);
+  }
+}
+
+@media (max-width: 400px) {
+  .btn-primary {
+    padding: 9px 13px;
+    font-size: 0.82rem;
+  }
+}

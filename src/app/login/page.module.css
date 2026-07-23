@@ -7,6 +7,18 @@
   background: radial-gradient(circle at top, var(--color-background-soft), var(--color-background));
 }
 
+@media (max-width: 480px) {
+  .container {
+    padding: 1rem;
+  }
+  .glassCard {
+    padding: 2rem 1.5rem;
+  }
+  .title {
+    font-size: 1.75rem;
+  }
+}
+
 .glassCard {
   background: rgba(30, 30, 40, 0.4);
   backdrop-filter: blur(12px);
