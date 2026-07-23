@@ -44,26 +44,20 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
     if (!email) { setResetError('Ingresá tu email.'); return; }
     setResetLoading(true);
     try {
-      // Llamar directamente desde el navegador a Supabase (no server action)
       const supabase = createClient();
       const redirectTo = `${window.location.origin}/reset`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      const { error, data } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       setResetLoading(false);
       if (error) {
-        const msg = error.message || '';
-        if (error.status === 429 || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('email rate')) {
-          setResetError('Demasiados intentos. Esperá unos minutos antes de solicitar otro correo.');
-        } else if (!msg || msg === '{}' || msg === '[]') {
-          setResetError('No se pudo enviar el correo. Verificá que el email esté registrado.');
-        } else {
-          setResetError(msg);
-        }
+        // DIAGNÓSTICO TEMPORAL: mostrar el error completo
+        const debug = `STATUS=${error.status} | NAME=${error.name} | MSG=${error.message} | FULL=${JSON.stringify(error)}`;
+        setResetError(debug);
       } else {
         setResetSent(true);
       }
     } catch (err: any) {
       setResetLoading(false);
-      setResetError('No se pudo conectar con el servidor. Intentá de nuevo.');
+      setResetError(`CATCH: ${err?.message || err} | ${JSON.stringify(err)}`);
     }
   };
 
