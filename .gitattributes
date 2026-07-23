@@ -1,0 +1,7 @@
+# Los binarios nunca pasan por conversión de fin de línea
+*.pdf binary
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
