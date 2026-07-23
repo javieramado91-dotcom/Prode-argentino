@@ -6,6 +6,18 @@ import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { notifyAdminNewUser } from '@/lib/notify'
 
+// Limpia cualquier error técnico de Supabase antes de mostrarlo al usuario.
+function sanitizeError(err: any, fallback: string): string {
+  let msg = ''
+  if (typeof err === 'string') msg = err
+  else if (err && typeof err.message === 'string') msg = err.message
+  if (!msg || msg === '[]' || msg === '{}' || msg === '[object Object]' || msg.trim() === '') {
+    return fallback
+  }
+  if (err?.status === 500 || err?.__isAuthError) return fallback
+  return msg
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
@@ -17,7 +29,8 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    redirect(`/login?mode=login&error=true&message=${encodeURIComponent(error.message)}`)
+    const msg = sanitizeError(error, 'Email o contraseña incorrectos. Verificá tus datos e intentá nuevamente.')
+    redirect(`/login?mode=login&error=true&message=${encodeURIComponent(msg)}`)
   }
 
   revalidatePath('/', 'layout')
@@ -43,7 +56,7 @@ export async function signup(formData: FormData) {
   const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-    let msg = error.message
+    let msg = sanitizeError(error, 'No se pudo crear la cuenta. Intentá de nuevo en unos segundos.')
     if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('unique constraint')) {
       msg = 'Ese email ya está registrado. Podés iniciar sesión o solicitar recuperar tu clave.'
     }
@@ -68,21 +81,33 @@ export async function resetPasswordAction(email: string) {
     return { error: 'Ingresá tu correo electrónico.' }
   }
 
-  const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-    redirectTo: `${origin}/reset`
-  })
+  let result: any = null
+  try {
+    result = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo: `${origin}/reset`
+    })
+  } catch (e: any) {
+    return { error: 'No se pudo conectar con el servidor de autenticación. Intentá nuevamente.' }
+  }
+
+  const { error } = result
 
   if (error) {
-    let msg = error.message || ''
-    if (msg.includes('redirect_to') || msg.includes('redirect')) {
-      msg = 'La URL de redirección no está permitida en Supabase. Agregá ' + origin + '/reset en Supabase -> Authentication -> URL Configuration -> Redirect URLs.'
-    } else if (msg.includes('rate limit') || (error as any)?.status === 429) {
-      msg = 'Superaste el límite de envíos por hora de Supabase. Aguardá unos minutos e intentá nuevamente.'
-    } else if (!msg || msg === '[]' || msg === '{}' || (error as any)?.status === 500) {
-      msg = 'No se pudo enviar el correo de recuperación. Verificá que la casilla esté registrada correctamente o que la URL /reset esté autorizada en Supabase.'
+    const status = (error as any)?.status
+    const raw = (error as any)?.message || ''
+
+    if (status === 500 || (error as any).__isAuthError) {
+      return { error: 'El servidor de Supabase no pudo procesar la solicitud (error 500). Verificá en Supabase → Authentication → URL Configuration que la URL "' + origin + '/reset" esté en la lista de Redirect URLs permitidas.' }
     }
-    return { error: msg }
+    if (raw.includes('redirect')) {
+      return { error: 'La URL de redirección no está permitida. Agregá "' + origin + '/reset" en Supabase → Authentication → URL Configuration → Redirect URLs.' }
+    }
+    if (status === 429 || raw.includes('rate limit')) {
+      return { error: 'Demasiados intentos. Esperá unos minutos antes de solicitar otro correo.' }
+    }
+    return { error: sanitizeError(error, 'No se pudo enviar el correo. Verificá tu email e intentá de nuevo.') }
   }
 
   return { success: true }
 }
+
