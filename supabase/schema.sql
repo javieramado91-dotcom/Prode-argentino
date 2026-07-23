@@ -79,6 +79,9 @@ begin
   )
   on conflict (id) do nothing;
   return new;
+exception when others then
+  -- Si ocurriera cualquier error secundario en public.users, no rompe auth.users
+  return new;
 end;
 $$;
 
