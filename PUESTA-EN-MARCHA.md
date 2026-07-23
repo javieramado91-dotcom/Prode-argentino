@@ -76,15 +76,12 @@ Para que Vercel lo despliegue solo en cada `git push`:
 1. Entrá a **[vercel.com/new](https://vercel.com/new)** e iniciá sesión (podés usar GitHub).
 2. **Import Git Repository** → elegí `Prode-argentino`. Vercel detecta Next.js solo
    (no cambies Build Command ni Output).
-3. Antes de **Deploy**, abrí **Environment Variables** y agregá estas dos
-   (son públicas, van en el navegador; están protegidas por RLS en Supabase):
+3. **Deploy**. En ~1 min tenés la URL en vivo. Cada push a `main` re-despliega solo.
 
-   | Name | Value |
-   |------|-------|
-   | `NEXT_PUBLIC_SUPABASE_URL` | `https://uxdnedasfycjuopplrdh.supabase.co` |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_yTGoxplxXwc5FtL2zUI5tQ_bmcQtPl4` |
-
-4. **Deploy**. En ~1 min tenés la URL en vivo. Cada push a `main` re-despliega solo.
+   > Las variables de Supabase ya vienen con un valor por defecto en el código (la
+   > clave `publishable` es pública por diseño), así que **no hace falta configurarlas**
+   > para que el sitio levante. Si querés sobreescribirlas, agregá en **Settings →
+   > Environment Variables**: `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 5. **Importante para el login en producción:** en Supabase → **Authentication → URL
    Configuration**, poné tu dominio de Vercel (ej. `https://prode-argentino.vercel.app`)
