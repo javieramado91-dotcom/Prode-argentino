@@ -1,13 +1,23 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createBrowserClient } from '@supabase/ssr';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase/config';
 import { LogoMark } from '@/components/Logo/Logo';
 import styles from '../login/page.module.css';
 
 export default function ResetPage() {
-  const supabase = createClient();
+  // Cliente dedicado con auto-canje DESACTIVADO: así el código del enlace se
+  // canjea una sola vez (el auto-canje + un canje manual hacía que el segundo
+  // fallara como "vencido/ya usado").
+  const supabase = useMemo(
+    () =>
+      createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { detectSessionInUrl: false, flowType: 'pkce' },
+      }),
+    []
+  );
   const router = useRouter();
 
   const [ready, setReady] = useState(false);
@@ -19,23 +29,36 @@ export default function ResetPage() {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
-  // Al llegar desde el enlace del email, canjeamos el código por una sesión
-  // de recuperación para poder cambiar la contraseña.
   useEffect(() => {
     let active = true;
     const run = async () => {
-      const code = new URLSearchParams(window.location.search).get('code');
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!active) return;
-        if (error) setFatal('El enlace venció o ya se usó. Pedí uno nuevo desde “Olvidé mi contraseña”.');
-        else setReady(true);
+      // Si ya hay sesión (p. ej. flujo implícito por hash), listo.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!active) return;
+      if (sessionData.session) { setReady(true); return; }
+
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const errDesc = params.get('error_description');
+
+      if (errDesc) {
+        setFatal(decodeURIComponent(errDesc));
         return;
       }
-      const { data } = await supabase.auth.getSession();
+      if (!code) {
+        setFatal('Abrí esta página desde el enlace que te llegó por email, en el mismo navegador.');
+        return;
+      }
+
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!active) return;
-      if (data.session) setReady(true);
-      else setFatal('Abrí esta página desde el enlace que te llegó por email.');
+      if (error) {
+        setFatal(
+          'No se pudo validar el enlace. Suele pasar si se abre en un navegador distinto al que pediste el cambio. Pedí uno nuevo y abrilo en Chrome.'
+        );
+      } else {
+        setReady(true);
+      }
     };
     run();
     return () => { active = false; };
