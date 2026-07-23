@@ -125,9 +125,21 @@ export async function POST(request: Request) {
       .from('matches')
       .upsert(rows, { onConflict: 'api_id' })
     if (upsertError) {
+      // Columna inexistente => la migración SQL no se ejecutó todavía.
+      const msg = upsertError.message || ''
+      if (upsertError.code === 'PGRST204' || upsertError.code === '42703' || msg.includes('schema cache') || msg.includes('does not exist')) {
+        return NextResponse.json(
+          {
+            error:
+              'La base de datos todavía no está migrada: ejecutá el archivo supabase/schema.sql en Supabase → SQL Editor (una sola vez) y recargá la página.',
+            detail: msg,
+          },
+          { status: 200 }
+        )
+      }
       // Sin service_role y sin admin, RLS bloquea la escritura: no es fatal.
       return NextResponse.json(
-        { skipped: true, reason: 'sin_permisos_escritura', detail: upsertError.message },
+        { skipped: true, reason: 'sin_permisos_escritura', detail: msg },
         { status: 200 }
       )
     }

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
-import SyncButton from '@/components/SyncButton/SyncButton'
+import AutoSync from '@/components/AutoSync/AutoSync'
 import { approveUser, toggleFeatured } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -54,7 +54,11 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      <SyncButton />
+      {/* La sincronización es automática al entrar; si falla, muestra el aviso. */}
+      <AutoSync />
+      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+        🔄 Los partidos se sincronizan solos con ESPN cada vez que alguien entra o actualiza la página.
+      </p>
 
       {matchesList && matchesList.length > 0 && (
         <section className="glass-panel" style={{ padding: '2rem', marginTop: '2rem' }}>
