@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { notifyAdminNewUser } from '@/lib/notify'
 
@@ -73,19 +72,23 @@ export async function signup(formData: FormData) {
 export async function resetPasswordAction(email: string) {
   const supabase = await createClient()
 
-  const h = await headers()
-  const origin = h.get('origin') || `https://${h.get('host') || 'prode-argentino.vercel.app'}`
-
   const cleanEmail = (email || '').trim().toLowerCase()
   if (!cleanEmail) {
     return { error: 'Ingresá tu correo electrónico.' }
   }
 
+  // Usar la URL de sitio configurada via env, o la URL de producción hardcodeada.
+  // NO usar el header `origin` porque en Vercel puede ser una URL de preview deployment
+  // que no está en la lista de Redirect URLs de Supabase.
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
+    'https://prode-argentino.vercel.app'
+
+  const redirectTo = `${siteUrl}/reset`
+
   let result: any = null
   try {
-    result = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-      redirectTo: `${origin}/reset`
-    })
+    result = await supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo })
   } catch (e: any) {
     return { error: 'No se pudo conectar con el servidor de autenticación. Intentá nuevamente.' }
   }
@@ -94,18 +97,16 @@ export async function resetPasswordAction(email: string) {
 
   if (error) {
     const status = (error as any)?.status
-    const raw = (error as any)?.message || ''
+    const raw = typeof (error as any)?.message === 'string' ? (error as any).message : ''
 
-    if (status === 500 || (error as any).__isAuthError) {
-      return { error: 'El servidor de Supabase no pudo procesar la solicitud (error 500). Verificá en Supabase → Authentication → URL Configuration que la URL "' + origin + '/reset" esté en la lista de Redirect URLs permitidas.' }
-    }
-    if (raw.includes('redirect')) {
-      return { error: 'La URL de redirección no está permitida. Agregá "' + origin + '/reset" en Supabase → Authentication → URL Configuration → Redirect URLs.' }
-    }
-    if (status === 429 || raw.includes('rate limit')) {
+    if (status === 429 || raw.toLowerCase().includes('rate limit') || raw.toLowerCase().includes('email rate')) {
       return { error: 'Demasiados intentos. Esperá unos minutos antes de solicitar otro correo.' }
     }
-    return { error: sanitizeError(error, 'No se pudo enviar el correo. Verificá tu email e intentá de nuevo.') }
+    if (raw.toLowerCase().includes('redirect')) {
+      return { error: `La URL de redirección "${redirectTo}" no está permitida en Supabase. Agregala en Authentication → URL Configuration → Redirect URLs.` }
+    }
+    // Cualquier otro error (incluido status 500 con mensaje vacío / "{}" / "[]")
+    return { error: `No se pudo enviar el correo de recuperación. (${raw || `error ${status || 'desconocido'}`}) — Verificá que el email esté registrado en el sistema.` }
   }
 
   return { success: true }
