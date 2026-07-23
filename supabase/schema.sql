@@ -429,6 +429,27 @@ create policy group_members_select on public.group_members
   using (user_id = auth.uid() or public.is_group_member(group_id, auth.uid()));
 
 -- ---------------------------------------------------------------------------
+-- 6d) Eliminar un usuario (solo admin) — borra todo su rastro y la cuenta auth
+-- ---------------------------------------------------------------------------
+
+create or replace function public.admin_delete_user(uid uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin(auth.uid()) then raise exception 'No autorizado'; end if;
+  if uid = auth.uid() then raise exception 'No podés eliminar tu propia cuenta'; end if;
+
+  delete from public.predictions   where user_id = uid;
+  delete from public.group_members where user_id = uid;
+  delete from public.groups        where owner_id = uid;
+  delete from public.users         where id = uid;
+  delete from auth.users           where id = uid;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 7) Bootstrap del primer admin
 --    Registrate primero en la app con este email, luego corré este UPDATE.
 -- ---------------------------------------------------------------------------

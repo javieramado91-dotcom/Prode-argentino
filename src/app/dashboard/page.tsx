@@ -36,6 +36,17 @@ export default async function DashboardPage() {
     .select('*')
     .eq('user_id', user.id)
 
+  // Solicitudes de registro pendientes (para el badge rojo del admin).
+  let pendingCount = 0
+  if (profile?.is_admin) {
+    const { count } = await supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_approved', false)
+      .eq('is_admin', false)
+    pendingCount = count ?? 0
+  }
+
   const { data: leaderboard } = await supabase.rpc('get_leaderboard')
   const board: LeaderboardRow[] = leaderboard || []
   const myPoints = board.find((r) => r.user_id === user.id)?.points ?? 0
@@ -111,7 +122,23 @@ export default async function DashboardPage() {
         <nav style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Link href="/grupos" className="btn-ghost">🏆 Torneos</Link>
           <Link href="/perfil" className="btn-ghost">👤 Perfil</Link>
-          {profile?.is_admin && <Link href="/admin" className="btn-ghost">👑 Admin</Link>}
+          {profile?.is_admin && (
+            <Link href="/admin" className="btn-ghost" style={{ position: 'relative' }}>
+              👑 Admin
+              {pendingCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -7, right: -7,
+                  background: 'var(--color-danger)', color: '#fff',
+                  fontSize: '0.68rem', fontWeight: 800, lineHeight: 1,
+                  minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '2px solid var(--color-bg-dark)',
+                }}>
+                  {pendingCount}
+                </span>
+              )}
+            </Link>
+          )}
           <form action="/auth/signout" method="post" style={{ marginLeft: 'auto' }}>
             <button className="btn-ghost" style={{ color: 'var(--color-danger)', borderColor: 'rgba(248,113,113,0.3)' }}>Salir</button>
           </form>

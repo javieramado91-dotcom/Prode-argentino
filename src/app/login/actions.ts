@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { notifyAdminNewUser } from '@/lib/notify'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -49,6 +50,9 @@ export async function signup(formData: FormData) {
   if (error) {
     redirect(`/login?mode=register&error=true&message=${encodeURIComponent(error.message)}`)
   }
+
+  // Avisar al administrador por email (no bloquea el registro si falla).
+  await notifyAdminNewUser(data.email)
 
   // Si Supabase exige confirmar el email, no hay sesión todavía: avisar claro.
   if (!signUpData.session) {

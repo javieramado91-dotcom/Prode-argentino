@@ -29,6 +29,18 @@ export async function approveUser(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath('/admin');
+  revalidatePath('/dashboard');
+}
+
+// Elimina un usuario por completo (perfil, pronósticos, membresías y cuenta).
+export async function deleteUser(formData: FormData) {
+  const supabase = await requireAdmin();
+  const userId = formData.get('userId') as string;
+
+  const { error } = await supabase.rpc('admin_delete_user', { uid: userId });
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin');
+  revalidatePath('/dashboard');
 }
 
 // Marca un partido como "Partido de la Fecha" (vale doble). Solo uno por ronda:
