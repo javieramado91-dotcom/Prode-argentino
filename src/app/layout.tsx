@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import Signature from "@/components/Signature/Signature";
 
 export const metadata: Metadata = {
   title: "Prode Argentino — Liga Profesional",
@@ -21,7 +22,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        {children}
+        <Signature />
+      </body>
     </html>
   );
 }

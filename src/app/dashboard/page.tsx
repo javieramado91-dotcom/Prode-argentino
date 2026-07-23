@@ -89,34 +89,33 @@ export default async function DashboardPage() {
       <AutoSync />
       <LiveRefresher active={hasLive} intervalMs={30000} />
 
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <LogoMark size={52} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
-          <div>
-            <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.5rem)', margin: '0 0 0.25rem 0' }}>Prode Argentino</h1>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-              Hola, {profile.display_name || user.email}
-              {myPosition > 0 && (
-                <> · <strong style={{ color: 'var(--color-accent)' }}>#{myPosition}</strong></>
-              )}
-            </p>
+      <header style={{ marginBottom: '1.5rem' }}>
+        {/* Barra superior: marca + puntos */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+            <LogoMark size={36} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <div className="gradient-text" style={{ fontSize: '1.25rem', fontWeight: 800, lineHeight: 1.15 }}>Prode Argentino</div>
+              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {profile.display_name || user.email}
+                {myPosition > 0 && <> · puesto <strong style={{ color: 'var(--color-accent)' }}>#{myPosition}</strong></>}
+              </div>
+            </div>
+          </div>
+          <div className="stat-chip">
+            Puntos <strong>{myPoints}</strong>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <div className="glass-panel" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Puntos</span>
-            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-accent)' }}>{myPoints}</span>
-          </div>
-          <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>🏆 Torneos</Link>
-          <Link href="/perfil" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>👤 Perfil</Link>
-          {profile?.is_admin && (
-            <Link href="/admin" className="btn-primary" style={{ background: 'var(--color-secondary)' }}>👑 Admin</Link>
-          )}
-          <form action="/auth/signout" method="post">
-            <button className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--color-danger)', color: 'var(--color-danger)' }}>Salir</button>
+        {/* Navegación */}
+        <nav style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Link href="/grupos" className="btn-ghost">🏆 Torneos</Link>
+          <Link href="/perfil" className="btn-ghost">👤 Perfil</Link>
+          {profile?.is_admin && <Link href="/admin" className="btn-ghost">👑 Admin</Link>}
+          <form action="/auth/signout" method="post" style={{ marginLeft: 'auto' }}>
+            <button className="btn-ghost" style={{ color: 'var(--color-danger)', borderColor: 'rgba(248,113,113,0.3)' }}>Salir</button>
           </form>
-        </div>
+        </nav>
       </header>
 
       {realMatches.length > 0 ? (

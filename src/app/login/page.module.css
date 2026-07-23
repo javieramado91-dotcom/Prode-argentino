@@ -2,9 +2,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  padding: 2rem;
-  background: radial-gradient(circle at top, var(--color-background-soft), var(--color-background));
+  min-height: 88vh;
+  padding: 2rem 1.25rem;
 }
 
 @media (max-width: 480px) {
@@ -15,37 +14,37 @@
     padding: 2rem 1.5rem;
   }
   .title {
-    font-size: 1.75rem;
+    font-size: 1.4rem;
   }
 }
 
 .glassCard {
-  background: rgba(30, 30, 40, 0.4);
+  background: var(--color-bg-panel);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 3rem 2.5rem;
+  border: var(--border-glass);
+  border-radius: var(--border-radius-lg);
+  padding: 2.5rem 2rem;
   width: 100%;
-  max-width: 420px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  animation: slideUp 0.5s ease-out;
+  max-width: 400px;
+  box-shadow: var(--shadow-glass);
+  animation: slideUp 0.4s ease-out;
 }
 
 .title {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   text-align: center;
-  margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.35rem;
+  color: var(--color-text-main);
 }
 
 .subtitle {
   text-align: center;
   color: var(--color-text-muted);
-  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  margin-bottom: 1.75rem;
 }
 
 .form {
@@ -67,20 +66,20 @@
 }
 
 .inputGroup input {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  color: var(--color-text);
+  background: var(--color-bg-inset);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  color: var(--color-text-main);
   font-family: inherit;
   font-size: 1rem;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .inputGroup input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(0, 158, 227, 0.18);
 }
 
 .actions {
@@ -94,17 +93,19 @@
   background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 0.875rem;
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 10px;
+  padding: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: filter 0.15s, transform 0.15s;
+  box-shadow: 0 2px 14px -2px var(--color-primary-glow);
 }
 
 .btnLogin:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 240, 255, 0.3);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .btnSignup {

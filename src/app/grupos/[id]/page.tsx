@@ -62,7 +62,7 @@ export default async function GrupoDetallePage(props: {
           >
             📲 Invitar por WhatsApp
           </a>
-          <Link href="/grupos" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>← Mis torneos</Link>
+          <Link href="/grupos" className="btn-ghost">← Mis torneos</Link>
         </div>
       </header>
 

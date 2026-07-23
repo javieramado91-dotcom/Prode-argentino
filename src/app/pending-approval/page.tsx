@@ -33,9 +33,7 @@ export default async function PendingApprovalPage() {
           Cuando seas confirmado por el administrador, podrás acceder al sistema. Se te avisará enviándote un mensaje al correo que ingresaste.
         </p>
         <form action="/auth/signout" method="post" style={{ marginTop: '2rem' }}>
-          <button className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--color-primary)' }}>
-            Cerrar Sesión
-          </button>
+          <button className="btn-ghost">Cerrar sesión</button>
         </form>
       </div>
     </main>

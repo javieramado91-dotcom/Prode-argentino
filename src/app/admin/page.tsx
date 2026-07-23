@@ -50,13 +50,9 @@ export default async function AdminPage() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ fontSize: '2rem', color: 'var(--color-primary)' }}>Panel de Administrador</h1>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link href="/dashboard" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }} title="Ir al Inicio">
-            🏠 Volver al Inicio
-          </Link>
+          <Link href="/dashboard" className="btn-ghost">🏠 Inicio</Link>
           <form action="/auth/signout" method="post">
-             <button className="btn-primary" style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--color-danger)', color: 'var(--color-danger)' }}>
-               Cerrar Sesión
-             </button>
+             <button className="btn-ghost" style={{ color: 'var(--color-danger)', borderColor: 'rgba(248,113,113,0.3)' }}>Salir</button>
           </form>
         </div>
       </header>

@@ -55,9 +55,7 @@ export default async function PerfilPage() {
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.25rem)', margin: 0 }}>Mi Perfil</h1>
-        <Link href="/dashboard" className="btn-primary" style={{ background: 'var(--color-secondary)', textDecoration: 'none' }}>
-          ← Volver
-        </Link>
+        <Link href="/dashboard" className="btn-ghost">← Volver</Link>
       </header>
 
       {/* Tarjeta de identidad + nivel */}
