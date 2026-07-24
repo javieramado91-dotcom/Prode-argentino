@@ -466,6 +466,97 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 6f) Puntos por fecha (para "Ganador de la fecha" y premios de la temporada)
+--     Devuelve, por cada fecha (round) y usuario, sus puntos y cuántos
+--     resultados exactos clavó, más si la fecha ya está completa (todos los
+--     partidos finalizados). El ganador de la fecha y los premios se calculan
+--     en el front a partir de estas filas.
+-- ---------------------------------------------------------------------------
+
+-- General: todos los usuarios aprobados.
+create or replace function public.get_round_scores()
+returns table (round text, user_id uuid, display_name text, points bigint, exacts bigint, is_complete boolean)
+language sql
+security definer set search_path = public
+stable
+as $$
+  with completeness as (
+    select m.round, bool_and(m.status = 'finished') as is_complete
+    from public.matches m
+    where m.round is not null
+    group by m.round
+  ),
+  scores as (
+    select m.round,
+           p.user_id,
+           coalesce(sum(p.points_earned), 0) as points,
+           count(*) filter (
+             where m.home_score = p.predicted_home_score
+               and m.away_score = p.predicted_away_score
+           ) as exacts
+    from public.predictions p
+    join public.matches m on m.id = p.match_id
+    where m.status = 'finished' and p.points_earned is not null
+    group by m.round, p.user_id
+  )
+  select s.round,
+         u.id,
+         coalesce(u.display_name, split_part(u.email, '@', 1)) as display_name,
+         s.points,
+         s.exacts,
+         coalesce(c.is_complete, false)
+  from scores s
+  join public.users u on u.id = s.user_id and u.is_approved = true
+  left join completeness c on c.round = s.round
+  order by s.round, s.points desc;
+$$;
+
+-- Torneo: solo miembros, respetando la fecha de arranque del grupo.
+create or replace function public.get_group_round_scores(gid uuid)
+returns table (round text, user_id uuid, display_name text, points bigint, exacts bigint, is_complete boolean)
+language sql
+security definer set search_path = public
+stable
+as $$
+  with grp as (
+    select start_round from public.groups where id = gid
+  ),
+  completeness as (
+    select m.round, bool_and(m.status = 'finished') as is_complete
+    from public.matches m
+    where m.round is not null
+    group by m.round
+  ),
+  scores as (
+    select m.round,
+           p.user_id,
+           coalesce(sum(p.points_earned), 0) as points,
+           count(*) filter (
+             where m.home_score = p.predicted_home_score
+               and m.away_score = p.predicted_away_score
+           ) as exacts
+    from public.predictions p
+    join public.matches m on m.id = p.match_id
+    join public.group_members gm on gm.user_id = p.user_id and gm.group_id = gid
+    cross join grp
+    where m.status = 'finished' and p.points_earned is not null
+      and (grp.start_round is null or m.round >= grp.start_round)
+    group by m.round, p.user_id
+  )
+  select s.round,
+         u.id,
+         coalesce(u.display_name, split_part(u.email, '@', 1)) as display_name,
+         s.points,
+         s.exacts,
+         coalesce(c.is_complete, false)
+  from scores s
+  join public.users u on u.id = s.user_id
+  left join completeness c on c.round = s.round
+  where public.is_group_member(gid, auth.uid())  -- el que consulta debe ser miembro
+  order by s.round, s.points desc;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 6e) Notificaciones push (Web Push)
 --     - push_subscriptions: una fila por dispositivo/navegador suscripto.
 --     - notification_settings: preferencias por usuario (qué avisos quiere).

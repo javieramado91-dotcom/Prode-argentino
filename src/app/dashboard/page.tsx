@@ -51,6 +51,12 @@ export default async function DashboardPage() {
 
   const { data: leaderboard } = await supabase.rpc('get_leaderboard')
   const board: LeaderboardRow[] = leaderboard || []
+
+  // Puntos por fecha (para "Ganador de la fecha" y premios de la temporada).
+  const { data: roundScores } = await supabase.rpc('get_round_scores')
+  const roundOrder = Array.from(
+    new Set((dbMatches || []).map((m: any) => m.round as string).filter(Boolean))
+  ).sort()
   const myPoints = board.find((r) => r.user_id === user.id)?.points ?? 0
   const myPosition = board.findIndex((r) => r.user_id === user.id) + 1
 
@@ -150,7 +156,12 @@ export default async function DashboardPage() {
       <NotificationBanner vapidPublicKey={VAPID_PUBLIC_KEY} />
 
       {realMatches.length > 0 ? (
-        <DashboardSections matches={realMatches} users={boardUsers} />
+        <DashboardSections
+          matches={realMatches}
+          users={boardUsers}
+          roundScores={roundScores || []}
+          roundOrder={roundOrder}
+        />
       ) : (
         <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
           Cargando los partidos de la Liga Profesional… Si no aparecen, actualizá la página en unos segundos.

@@ -3,12 +3,14 @@
 import React, { useMemo, useState } from 'react';
 import MatchCard, { MatchProps } from '../MatchCard/MatchCard';
 import Leaderboard from '../Leaderboard/Leaderboard';
+import SeasonAwards from '../SeasonAwards/SeasonAwards';
 import styles from './DashboardSections.module.css';
 import { RESULT_ROUNDS_BACK } from '@/lib/prode';
+import type { RoundScore } from '@/lib/awards';
 
 type UserScore = { id: string; name: string; points: number };
 
-type TabKey = 'jugar' | 'vivo' | 'resultados' | 'calendario' | 'ranking';
+type TabKey = 'jugar' | 'vivo' | 'resultados' | 'calendario' | 'ranking' | 'premios';
 
 function roundKey(m: MatchProps): string {
   return m.round || m.matchDate.slice(0, 10);
@@ -71,9 +73,13 @@ function Groups({
 export default function DashboardSections({
   matches,
   users,
+  roundScores,
+  roundOrder,
 }: {
   matches: MatchProps[];
   users: UserScore[];
+  roundScores: RoundScore[];
+  roundOrder: string[];
 }) {
   const live = useMemo(() => matches.filter((m) => m.status === 'in_progress'), [matches]);
 
@@ -131,6 +137,7 @@ export default function DashboardSections({
     { key: 'resultados', label: 'Resultados', badge: resultadosCount || undefined },
     { key: 'calendario', label: 'Calendario' },
     { key: 'ranking', label: 'Ranking' },
+    { key: 'premios', label: '🏆 Premios' },
   ];
 
   return (
@@ -185,6 +192,10 @@ export default function DashboardSections({
       )}
 
       {tab === 'ranking' && <Leaderboard title="Ranking general" users={users} />}
+
+      {tab === 'premios' && (
+        <SeasonAwards scores={roundScores} roundOrder={roundOrder} context="general" />
+      )}
     </div>
   );
 }

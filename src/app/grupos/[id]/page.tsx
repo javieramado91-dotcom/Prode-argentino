@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import Leaderboard from '@/components/Leaderboard/Leaderboard'
+import SeasonAwards from '@/components/SeasonAwards/SeasonAwards'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,18 +26,25 @@ export default async function GrupoDetallePage(props: {
   // Si no es miembro, la RLS oculta el grupo → 404.
   if (!group) notFound()
 
+  // Orden cronológico de todas las fechas (para numerar y para los premios).
+  const { data: roundRows } = await supabase.from('matches').select('round')
+  const roundOrder = Array.from(
+    new Set((roundRows || []).map((r: any) => r.round as string).filter(Boolean))
+  ).sort()
+
   // Número de la fecha de arranque (posición cronológica entre todas las fechas).
   let startFechaNum: number | null = null
   if (group.start_round) {
-    const { data: roundRows } = await supabase.from('matches').select('round')
-    const rounds = Array.from(new Set((roundRows || []).map((r: any) => r.round as string))).sort()
-    const idx = rounds.indexOf(group.start_round)
+    const idx = roundOrder.indexOf(group.start_round)
     if (idx >= 0) startFechaNum = idx + 1
   }
 
   const { data } = await supabase.rpc('get_group_leaderboard', { gid: id })
   const rows: Row[] = data || []
   const users = rows.map((r) => ({ id: r.user_id, name: r.display_name, points: r.points }))
+
+  // Puntos por fecha del torneo (para "Ganador de la fecha" y premios).
+  const { data: roundScores } = await supabase.rpc('get_group_round_scores', { gid: id })
 
   const inviteText = encodeURIComponent(
     `⚽ ¡Sumate a mi torneo "${group.name}" en el Prode Argentino!\n\n1. Entrá a https://prode-argentino.vercel.app\n2. Registrate y andá a "Grupos"\n3. Unite con el código: ${group.invite_code}`
@@ -67,6 +75,10 @@ export default async function GrupoDetallePage(props: {
       </header>
 
       <Leaderboard title="Ranking del torneo" users={users} />
+
+      <div style={{ marginTop: '2rem' }}>
+        <SeasonAwards scores={roundScores || []} roundOrder={roundOrder} context="torneo" />
+      </div>
     </main>
   )
 }
