@@ -466,6 +466,56 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 6e) Notificaciones push (Web Push)
+--     - push_subscriptions: una fila por dispositivo/navegador suscripto.
+--     - notification_settings: preferencias por usuario (qué avisos quiere).
+--     - notifications_log: idempotencia, para no mandar el mismo aviso 2 veces.
+--     El envío lo hace el endpoint /api/notify con la service_role (saltea RLS).
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.push_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  endpoint    text not null unique,
+  p256dh      text not null,
+  auth        text not null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists push_subscriptions_user_idx
+  on public.push_subscriptions (user_id);
+
+create table if not exists public.notification_settings (
+  user_id                uuid primary key references auth.users (id) on delete cascade,
+  notify_match_starting  boolean not null default true,
+  notify_match_finished  boolean not null default true,
+  updated_at             timestamptz not null default now()
+);
+
+create table if not exists public.notifications_log (
+  user_id   uuid not null references auth.users (id) on delete cascade,
+  match_id  uuid not null references public.matches (id) on delete cascade,
+  kind      text not null,                       -- 'starting' | 'finished'
+  sent_at   timestamptz not null default now(),
+  primary key (user_id, match_id, kind)
+);
+
+-- RLS: cada usuario gestiona SUS suscripciones y preferencias.
+alter table public.push_subscriptions enable row level security;
+drop policy if exists push_subscriptions_own on public.push_subscriptions;
+create policy push_subscriptions_own on public.push_subscriptions
+  for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+alter table public.notification_settings enable row level security;
+drop policy if exists notification_settings_own on public.notification_settings;
+create policy notification_settings_own on public.notification_settings
+  for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- notifications_log: sin políticas → solo la service_role (cron) accede.
+alter table public.notifications_log enable row level security;
+
+-- ---------------------------------------------------------------------------
 -- 7) Bootstrap del primer admin
 --    Registrate primero en la app con este email, luego corré este UPDATE.
 -- ---------------------------------------------------------------------------

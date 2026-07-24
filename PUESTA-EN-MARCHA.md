@@ -105,6 +105,58 @@ escritura funcione para cualquier usuario (no solo el admin), agregá en Vercel 
 > sincronización automática la dispara únicamente el admin cuando entra (o con el botón
 > del panel); el resto de los usuarios ven la última fecha sincronizada.
 
+## Notificaciones push (avisos al celular)
+
+La app ahora manda **notificaciones push** (llegan al celular aunque esté cerrada):
+
+- **⚽ Partido por empezar** — hasta 3 h antes del inicio, solo a quien **todavía no
+  cargó** su pronóstico.
+- **🏁 Partido finalizado** — cuando termina, con el resultado y **tus puntos**.
+
+Cada usuario las activa/desactiva desde **`/perfil` → Notificaciones**, y puede elegir
+qué tipo de aviso quiere. Hay un botón de **prueba** para confirmar que llegan.
+
+### Qué tenés que configurar (una sola vez)
+
+1. **Migración**: volvé a correr [`supabase/schema.sql`](supabase/schema.sql) en el SQL
+   Editor. Agrega 3 tablas nuevas (`push_subscriptions`, `notification_settings`,
+   `notifications_log`) con su RLS. Es idempotente: no rompe nada de lo que ya está.
+
+2. **Variables de entorno en Vercel** (Settings → Environment Variables):
+
+   | Name | Value | Por qué |
+   |------|-------|---------|
+   | `SUPABASE_SERVICE_ROLE_KEY` | *(Supabase → Settings → API → service_role)* | **Obligatoria**: enviar a todos los usuarios necesita saltear RLS. |
+   | `VAPID_PRIVATE_KEY` | `ICdKihmFAXCjJeJtMdQJ48qt_lUfaZZbZS9vQUEYuns` | **Obligatoria**: firma los push. Es SECRETA (solo servidor). |
+   | `CRON_SECRET` | *(un string largo cualquiera)* | Permite que el cron dispare los avisos sin sesión. |
+   | `VAPID_SUBJECT` | `mailto:javieramado91@gmail.com` | Opcional (ya tiene default). |
+   | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `BHR4-AvSP31u26KYZ0acU9erqYb55kh6ctURuPC5c1dokLO7XOuO0fq-v_Kvsy0t7SeSCRuMfrmv1V9zsETpTjs` | Opcional: la clave pública ya viene con default en el código. |
+
+   > La **clave pública** VAPID está pensada para ser visible (viaja al navegador),
+   > por eso ya está en el código como default. La **privada** nunca se publica.
+   > Si algún día querés rotar el par, generá uno nuevo con
+   > `npx web-push generate-vapid-keys` y cambiá **las dos**.
+
+3. **Cron que dispara los avisos** — el servidor necesita que algo lo despierte cada
+   pocos minutos para detectar los partidos que empiezan/terminan. La forma gratis:
+   entrá a **[cron-job.org](https://cron-job.org)** (gratis), creá un job que haga
+   **GET** a:
+
+   ```
+   https://prode-argentino.vercel.app/api/notify
+   ```
+
+   - Intervalo: **cada 2–5 minutos**.
+   - En **Headers**, agregá: `x-cron-secret: <el mismo valor de CRON_SECRET>`.
+
+   Ese endpoint, en cada corrida, sincroniza los partidos con ESPN y manda los avisos
+   pendientes (sin repetir: usa `notifications_log`). Sin cron, los push no se envían
+   solos (pero el botón de prueba en `/perfil` sí funciona igual).
+
+> **iPhone**: por limitación de Apple, el push solo funciona si el usuario **instala la
+> app** (Compartir → “Agregar a pantalla de inicio”) y la abre desde el ícono. La
+> pantalla de `/perfil` ya muestra ese aviso automáticamente en iOS.
+
 ## Cómo se ve y se juega (mobile-first)
 
 El dashboard está dividido en **secciones con pestañas**, pensadas para el celular:

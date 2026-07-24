@@ -12,6 +12,8 @@ los partidos de cada fecha, sumá puntos y competí en el ranking global y con t
   auto-refresco durante los partidos.
 - **Ranking global** y **grupos privados** (ranking entre amigos con código de invitación).
 - **Perfil estilo videojuego**: % de aciertos, mejor racha, niveles (Amateur → Leyenda).
+- **Notificaciones push** (Web Push): aviso cuando un partido está por empezar (si no
+  pronosticaste) y cuando termina con tus puntos. Se activan/desactivan por usuario.
 - **Panel de administración**: sincronización de partidos y aprobación de usuarios.
 
 ## Stack

@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import NotificationToggle from '@/components/NotificationToggle/NotificationToggle'
+import { VAPID_PUBLIC_KEY } from '@/lib/push/keys'
+import { getSettings } from './notify-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +49,8 @@ export default async function PerfilPage() {
     played: 0, exact_count: 0, correct_count: 0, zero_count: 0,
     total_points: 0, accuracy: 0, best_streak: 0, rank_position: 0,
   }
+
+  const notifySettings = await getSettings()
 
   const name = profile.display_name || user.email
   const lvl = level(s.total_points)
@@ -104,6 +109,8 @@ export default async function PerfilPage() {
           Todavía no tenés partidos finalizados con pronóstico. ¡Cargá tus predicciones en la fecha actual!
         </p>
       )}
+
+      <NotificationToggle vapidPublicKey={VAPID_PUBLIC_KEY} initialSettings={notifySettings} />
     </main>
   )
 }
