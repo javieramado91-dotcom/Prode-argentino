@@ -9,6 +9,6 @@
 // lado (incluida una página server que le pasa la clave a un componente cliente).
 export const VAPID_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
-  'BHR4-AvSP31u26KYZ0acU9erqYb55kh6ctURuPC5c1dokLO7XOuO0fq-v_Kvsy0t7SeSCRuMfrmv1V9zsETpTjs'
+  'BKmQ67yCw0fGSXSv0WpsZLjxPXnizsFtfInV7eb5JBqWV8n479zM5CnEldse-YcRUlzTb5Pl7P36bHAiJ5ZYOc8'
 
 export const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:javieramado91@gmail.com'

@@ -127,15 +127,16 @@ qué tipo de aviso quiere. Hay un botón de **prueba** para confirmar que llegan
    | Name | Value | Por qué |
    |------|-------|---------|
    | `SUPABASE_SERVICE_ROLE_KEY` | *(Supabase → Settings → API → service_role)* | **Obligatoria**: enviar a todos los usuarios necesita saltear RLS. |
-   | `VAPID_PRIVATE_KEY` | `ICdKihmFAXCjJeJtMdQJ48qt_lUfaZZbZS9vQUEYuns` | **Obligatoria**: firma los push. Es SECRETA (solo servidor). |
+   | `VAPID_PRIVATE_KEY` | *(tu clave privada VAPID — ver `.env.local`)* | **Obligatoria**: firma los push. Es SECRETA: **nunca** la pegues en el código ni en un archivo versionado. |
    | `CRON_SECRET` | *(un string largo cualquiera)* | Permite que el cron dispare los avisos sin sesión. |
    | `VAPID_SUBJECT` | `mailto:javieramado91@gmail.com` | Opcional (ya tiene default). |
-   | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `BHR4-AvSP31u26KYZ0acU9erqYb55kh6ctURuPC5c1dokLO7XOuO0fq-v_Kvsy0t7SeSCRuMfrmv1V9zsETpTjs` | Opcional: la clave pública ya viene con default en el código. |
+   | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | *(opcional: la pública ya está como default en el código)* | Solo si rotás las claves. |
 
    > La **clave pública** VAPID está pensada para ser visible (viaja al navegador),
-   > por eso ya está en el código como default. La **privada** nunca se publica.
-   > Si algún día querés rotar el par, generá uno nuevo con
-   > `npx web-push generate-vapid-keys` y cambiá **las dos**.
+   > por eso va en el código como default (`src/lib/push/keys.ts`). La **privada**
+   > vive SOLO en variables de entorno (`.env.local` local, Vercel en prod) y **jamás**
+   > se commitea. Para generar/rotar el par: `npx web-push generate-vapid-keys` y
+   > actualizá la pública en `keys.ts` y la privada en las variables de entorno.
 
 3. **Cron que dispara los avisos** — el servidor necesita que algo lo despierte cada
    pocos minutos para detectar los partidos que empiezan/terminan. La forma gratis:

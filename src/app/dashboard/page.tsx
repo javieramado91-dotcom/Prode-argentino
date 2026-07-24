@@ -5,8 +5,10 @@ import { MatchProps } from '@/components/MatchCard/MatchCard'
 import LiveRefresher from '@/components/LiveRefresher/LiveRefresher'
 import AutoSync from '@/components/AutoSync/AutoSync'
 import DashboardSections from '@/components/DashboardSections/DashboardSections'
+import NotificationBanner from '@/components/NotificationBanner/NotificationBanner'
 import { LogoMark } from '@/components/Logo/Logo'
 import { PREDICTABLE_ROUNDS } from '@/lib/prode'
+import { VAPID_PUBLIC_KEY } from '@/lib/push/keys'
 
 export const dynamic = 'force-dynamic'
 
@@ -144,6 +146,8 @@ export default async function DashboardPage() {
           </form>
         </nav>
       </header>
+
+      <NotificationBanner vapidPublicKey={VAPID_PUBLIC_KEY} />
 
       {realMatches.length > 0 ? (
         <DashboardSections matches={realMatches} users={boardUsers} />
