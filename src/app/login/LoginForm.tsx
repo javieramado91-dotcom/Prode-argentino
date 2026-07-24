@@ -46,18 +46,28 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
     try {
       const supabase = createClient();
       const redirectTo = `${window.location.origin}/reset`;
-      const { error, data } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       setResetLoading(false);
       if (error) {
-        // DIAGNÓSTICO TEMPORAL: mostrar el error completo
-        const debug = `STATUS=${error.status} | NAME=${error.name} | MSG=${error.message} | FULL=${JSON.stringify(error)}`;
-        setResetError(debug);
+        const status = (error as any)?.status;
+        const raw = (error?.message || '').toLowerCase();
+        if (status === 429 || raw.includes('rate limit') || raw.includes('email rate')) {
+          setResetError('Demasiados intentos. Esperá unos minutos antes de pedir otro correo.');
+        } else if (status === 500 || error?.name === 'AuthRetryableFetchError') {
+          // El servidor de auth no pudo enviar el email (servicio de correo
+          // caído o sin SMTP configurado en Supabase).
+          setResetError('No pudimos enviar el correo en este momento. Probá de nuevo en unos minutos.');
+        } else if (raw.includes('redirect')) {
+          setResetError('La dirección de retorno no está habilitada. Avisá al administrador.');
+        } else {
+          setResetError('No se pudo enviar el correo de recuperación. Revisá el email e intentá de nuevo.');
+        }
       } else {
         setResetSent(true);
       }
-    } catch (err: any) {
+    } catch {
       setResetLoading(false);
-      setResetError(`CATCH: ${err?.message || err} | ${JSON.stringify(err)}`);
+      setResetError('No se pudo conectar con el servidor. Revisá tu conexión e intentá de nuevo.');
     }
   };
 
@@ -74,8 +84,14 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
     setLocalError(null);
     if (!isRegister) return;
     const fd = new FormData(e.currentTarget);
+    const name = ((fd.get('display_name') as string) || '').trim();
     const pw = (fd.get('password') as string) || '';
     const pw2 = (fd.get('confirm') as string) || '';
+    if (name.length < 2) {
+      e.preventDefault();
+      setLocalError('Poné un nombre de usuario para que puedan identificarte.');
+      return;
+    }
     if (pw.length < 6) {
       e.preventDefault();
       setLocalError('La contraseña debe tener al menos 6 caracteres.');
@@ -163,6 +179,22 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
         {localError && <div className={styles.errorBox}>{localError}</div>}
 
         <form className={styles.form} action={isRegister ? signup : login} onSubmit={onSubmit}>
+          {isRegister && (
+            <div className={styles.inputGroup}>
+              <label htmlFor="displayName">Nombre de usuario</label>
+              <input
+                id="displayName"
+                name="display_name"
+                type="text"
+                placeholder="Cómo te van a ver en el ranking"
+                required
+                minLength={2}
+                maxLength={30}
+                autoComplete="nickname"
+              />
+            </div>
+          )}
+
           <div className={styles.inputGroup}>
             <label htmlFor="email">Email</label>
             <input id="email" name="email" type="email" placeholder="tu@email.com" required autoComplete="email" />

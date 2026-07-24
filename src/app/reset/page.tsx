@@ -32,56 +32,44 @@ export default function ResetPage() {
   useEffect(() => {
     let active = true;
     const run = async () => {
-      // 1. Escuchar eventos de autenticación (p. ej. PASSWORD_RECOVERY)
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (!active) return;
-        if (event === 'PASSWORD_RECOVERY' || session) {
-          setReady(true);
-        }
-      });
-
-      // 2. Si ya hay sesión activa
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!active) return;
-      if (sessionData.session) {
-        setReady(true);
-        subscription.unsubscribe();
-        return;
-      }
-
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
       const errDesc = params.get('error_description');
+      const hash = window.location.hash || '';
+      const hasHashToken = hash.includes('access_token') || hash.includes('type=recovery');
 
       if (errDesc) {
         setFatal(decodeURIComponent(errDesc));
-        subscription.unsubscribe();
         return;
       }
 
-      // Si viene por Hash (#access_token=... o #type=recovery)
-      if (window.location.hash.includes('access_token') || window.location.hash.includes('type=recovery')) {
+      // IMPORTANTE: nunca damos por buena la sesión que ya pudiera estar activa
+      // en este navegador (p. ej. la del admin). Si lo hiciéramos, "Guardar
+      // contraseña" le cambiaría la clave a la cuenta logueada, no a la del
+      // enlace. Por eso validamos SOLO el enlace: al canjear el código, la
+      // sesión activa se REEMPLAZA por la del usuario dueño del enlace.
+
+      // Flujo normal (PKCE): el enlace del email trae ?code=...
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!active) return;
+        if (error) {
+          setFatal(
+            'No se pudo validar el enlace. Suele pasar si ya venció, o si se abre en un navegador diferente al que pediste el cambio. Pedí uno nuevo y abrilo en el mismo navegador.'
+          );
+        } else {
+          setReady(true);
+        }
+        return;
+      }
+
+      // Flujo alternativo por hash (#access_token / #type=recovery)
+      if (hasHashToken) {
         setReady(true);
-        subscription.unsubscribe();
         return;
       }
 
-      if (!code) {
-        setFatal('Abrí esta página desde el enlace que te llegó por email, en el mismo navegador.');
-        subscription.unsubscribe();
-        return;
-      }
-
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (!active) return;
-      if (error) {
-        setFatal(
-          'No se pudo validar el enlace. Suele pasar si el enlace ya vence, o si se abre en un navegador diferente al que pediste el cambio. Pedí uno nuevo y abrilo en el mismo navegador.'
-        );
-      } else {
-        setReady(true);
-      }
-      subscription.unsubscribe();
+      setFatal('Abrí esta página desde el enlace que te llegó por email, en el mismo navegador.');
     };
     run();
     return () => { active = false; };
@@ -94,10 +82,22 @@ export default function ResetPage() {
     if (pw !== pw2) { setError('Las contraseñas no coinciden.'); return; }
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
+    if (error) { setSaving(false); setError(error.message); return; }
+
+    // Cerramos la sesión de recuperación para que el usuario entre "limpio"
+    // con su cuenta y su nueva clave. Además evita dejar logueada una cuenta
+    // de prueba en el navegador del admin.
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     setSaving(false);
-    if (error) { setError(error.message); return; }
     setDone(true);
-    setTimeout(() => router.push('/dashboard'), 1500);
+    setTimeout(
+      () =>
+        router.push(
+          '/login?info=' +
+            encodeURIComponent('Contraseña actualizada. Iniciá sesión con tu nueva clave.')
+        ),
+      1500
+    );
   };
 
   return (
@@ -114,7 +114,7 @@ export default function ResetPage() {
             </button>
           </>
         ) : done ? (
-          <div className={styles.infoBox}>¡Contraseña actualizada! Entrando…</div>
+          <div className={styles.infoBox}>¡Contraseña actualizada! Te llevamos al inicio de sesión…</div>
         ) : !ready ? (
           <p className={styles.subtitle}>Validando el enlace…</p>
         ) : (

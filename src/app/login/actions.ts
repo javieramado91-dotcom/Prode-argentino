@@ -41,13 +41,20 @@ export async function signup(formData: FormData) {
 
   const emailRaw = (formData.get('email') as string || '').trim().toLowerCase()
   const password = formData.get('password') as string
+  const displayName = ((formData.get('display_name') as string) || '').trim()
+
+  // El nombre de usuario es obligatorio: permite identificar a cada persona
+  // en el panel de admin y en los rankings.
+  if (displayName.length < 2) {
+    redirect(`/login?mode=register&error=true&message=${encodeURIComponent('Ingresá un nombre de usuario (mínimo 2 caracteres).')}`)
+  }
 
   const data = {
     email: emailRaw,
     password,
     options: {
       data: {
-        display_name: emailRaw.split('@')[0]
+        display_name: displayName
       }
     }
   }
