@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { notifyUserApproved } from '@/lib/notify';
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -22,12 +23,21 @@ export async function approveUser(formData: FormData) {
   const supabase = await requireAdmin();
   const userId = formData.get('userId') as string;
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('users')
     .update({ is_approved: true })
-    .eq('id', userId);
+    .eq('id', userId)
+    .select('email, display_name')
+    .single();
 
   if (error) throw new Error(error.message);
+
+  // Avisar al usuario por email que ya puede ingresar. Si el envío falla o el
+  // mailer no está configurado, NO rompemos la aprobación (ya quedó aprobado).
+  if (updated?.email) {
+    await notifyUserApproved(updated.email, updated.display_name);
+  }
+
   revalidatePath('/admin');
   revalidatePath('/dashboard');
 }
