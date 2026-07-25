@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 
 import AutoSync from '@/components/AutoSync/AutoSync'
+import TopNav from '@/components/TopNav/TopNav'
 import AdminTabs from './AdminTabs'
 
 export const dynamic = 'force-dynamic'
@@ -44,14 +44,9 @@ export default async function AdminPage() {
 
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <TopNav active="admin" />
+      <header style={{ marginBottom: '1.5rem' }}>
         <h1 className="gradient-text" style={{ fontSize: 'clamp(1.5rem, 6vw, 2rem)', margin: 0 }}>Panel de Administrador</h1>
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-          <Link href="/dashboard" className="btn-ghost">🏠 Inicio</Link>
-          <form action="/auth/signout" method="post">
-            <button className="btn-ghost" style={{ color: 'var(--color-danger)', borderColor: 'rgba(248,113,113,0.3)' }}>Salir</button>
-          </form>
-        </div>
       </header>
 
       {/* Sincronización automática (si falla, avisa) */}

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import TopNav from '@/components/TopNav/TopNav'
 import { createGroupAction, joinGroupAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -41,9 +42,9 @@ export default async function GruposPage(props: {
 
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <TopNav active="torneos" />
+      <header style={{ marginBottom: '2.5rem' }}>
         <h1 className="gradient-text" style={{ fontSize: 'clamp(1.6rem, 7vw, 2.25rem)', margin: 0 }}>Torneos entre amigos</h1>
-        <Link href="/dashboard" className="btn-ghost">← Volver</Link>
       </header>
 
       {error && (

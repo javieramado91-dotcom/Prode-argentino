@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import Leaderboard from '@/components/Leaderboard/Leaderboard'
 import SeasonAwards from '@/components/SeasonAwards/SeasonAwards'
+import TopNav from '@/components/TopNav/TopNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +53,7 @@ export default async function GrupoDetallePage(props: {
 
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
+      <TopNav active="torneos" />
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="gradient-text" style={{ fontSize: 'clamp(1.5rem, 6vw, 2rem)', margin: '0 0 0.25rem 0' }}>{group.name}</h1>
