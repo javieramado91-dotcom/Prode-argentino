@@ -1,4 +1,5 @@
 import { computeFechaWinners, computeAwards, type RoundScore } from '@/lib/awards'
+import AwardsShare from './AwardsShare'
 
 // Muestra los premios de la temporada + el ganador de cada fecha.
 // Sirve tanto en la general (dashboard) como dentro de un torneo.
@@ -6,13 +7,16 @@ export default function SeasonAwards({
   scores,
   roundOrder,
   context,
+  title,
 }: {
   scores: RoundScore[]
   roundOrder: string[]
   context: 'general' | 'torneo'
+  title?: string
 }) {
   const fechaWinners = computeFechaWinners(scores, roundOrder)
   const awards = computeAwards(scores, fechaWinners)
+  const shareTitle = title || (context === 'torneo' ? 'Torneo' : 'Ranking general')
 
   if (fechaWinners.length === 0) {
     return (
@@ -28,10 +32,22 @@ export default function SeasonAwards({
 
   return (
     <div>
-      {/* Premios de la temporada */}
-      <h3 style={{ margin: '0.25rem 0 0.9rem', fontSize: '1.1rem' }}>
-        🏅 Premios {context === 'torneo' ? 'del torneo' : 'de la temporada'}
-      </h3>
+      {/* Encabezado + botón de compartir en Insta (placa 9:16) */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+          flexWrap: 'wrap',
+          margin: '0.25rem 0 0.9rem',
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
+          🏅 Premios {context === 'torneo' ? 'del torneo' : 'de la temporada'}
+        </h3>
+        <AwardsShare title={shareTitle} fechaWinners={fechaWinners} awards={awards} />
+      </div>
       <div
         style={{
           display: 'grid',

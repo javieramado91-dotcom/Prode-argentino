@@ -82,7 +82,7 @@ export default async function GrupoDetallePage(props: {
       <AddMemberByName groupId={id} />
 
       <div style={{ marginTop: '2rem' }}>
-        <SeasonAwards scores={roundScores || []} roundOrder={roundOrder} context="torneo" />
+        <SeasonAwards scores={roundScores || []} roundOrder={roundOrder} context="torneo" title={group.name} />
       </div>
     </main>
   )
