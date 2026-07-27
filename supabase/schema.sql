@@ -557,6 +557,51 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 6g) Agregar miembros a un torneo POR NOMBRE (sin código de invitación)
+--     Para gente que no maneja bien copiar/pegar el código: un miembro busca a
+--     la persona por su nombre y la suma directo.
+-- ---------------------------------------------------------------------------
+
+-- Busca usuarios aprobados por nombre que TODAVÍA no están en el torneo.
+-- Solo un miembro del torneo puede usarla (si no, no devuelve nada).
+create or replace function public.search_users_for_group(gid uuid, q text)
+returns table (id uuid, display_name text)
+language sql
+security definer set search_path = public
+stable
+as $$
+  select u.id,
+         coalesce(u.display_name, split_part(u.email, '@', 1)) as display_name
+  from public.users u
+  where public.is_group_member(gid, auth.uid())            -- el que busca es miembro
+    and u.is_approved = true
+    and length(trim(coalesce(q, ''))) >= 2
+    and coalesce(u.display_name, split_part(u.email, '@', 1)) ilike '%' || trim(q) || '%'
+    and not exists (
+      select 1 from public.group_members gm
+      where gm.group_id = gid and gm.user_id = u.id
+    )
+  order by display_name asc
+  limit 10;
+$$;
+
+-- Agrega un usuario al torneo. Solo un miembro puede sumar a otros.
+create or replace function public.add_user_to_group(gid uuid, uid uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_group_member(gid, auth.uid()) then
+    raise exception 'No autorizado';
+  end if;
+  insert into public.group_members (group_id, user_id)
+  values (gid, uid)
+  on conflict do nothing;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 6e) Notificaciones push (Web Push)
 --     - push_subscriptions: una fila por dispositivo/navegador suscripto.
 --     - notification_settings: preferencias por usuario (qué avisos quiere).

@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import Leaderboard from '@/components/Leaderboard/Leaderboard'
 import SeasonAwards from '@/components/SeasonAwards/SeasonAwards'
+import AddMemberByName from '@/components/AddMemberByName/AddMemberByName'
 import TopNav from '@/components/TopNav/TopNav'
 
 export const dynamic = 'force-dynamic'
@@ -77,6 +78,8 @@ export default async function GrupoDetallePage(props: {
       </header>
 
       <Leaderboard title="Ranking del torneo" users={users} />
+
+      <AddMemberByName groupId={id} />
 
       <div style={{ marginTop: '2rem' }}>
         <SeasonAwards scores={roundScores || []} roundOrder={roundOrder} context="torneo" />
