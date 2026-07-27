@@ -41,26 +41,41 @@ function teamsOf(e: EspnEvent): string[] {
   return e.competitions[0].competitors.map((c) => c.team.displayName)
 }
 
-// Agrupa en "fechas": cada equipo juega una vez por fecha, así que la
-// repetición de un equipo marca el inicio de la siguiente. La fecha se
-// identifica por el día de su primer partido (YYYY-MM-DD), que es estable.
+// Agrupa en "fechas". ESPN no da el número de fecha oficial, así que lo
+// deducimos: en cada fecha, cada equipo juega EXACTAMENTE una vez.
+//
+// Algoritmo de "empaquetado": recorremos los partidos por fecha y asignamos
+// cada uno a la PRIMERA fecha (bucket) donde todavía no jugó NINGUNO de sus dos
+// equipos. Esto tolera los partidos postergados: un partido movido a más
+// adelante vuelve a caer en su fecha original (donde sus equipos siguen libres),
+// en vez de romper la numeración como haría un corte por "primer repetido".
+// La fecha se identifica por el día de su primer partido (YYYY-MM-DD), estable.
 function assignRounds(events: EspnEvent[]): Map<string, string> {
   const sorted = [...events].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   )
-  const roundByEventId = new Map<string, string>()
-  let seen = new Set<string>()
-  let roundKey: string | null = null
+
+  const buckets: { teams: Set<string>; minDate: string }[] = []
+  const bucketOfEvent = new Map<string, number>()
+
   for (const e of sorted) {
     const names = teamsOf(e)
-    if (roundKey && names.some((n) => seen.has(n))) {
-      seen = new Set()
-      roundKey = null
+    // Primer bucket donde AMBOS equipos están libres (una fecha completa de 30
+    // equipos ya no acepta a nadie, así que las fechas cerradas se saltean solas).
+    let idx = buckets.findIndex((b) => names.every((n) => !b.teams.has(n)))
+    if (idx === -1) {
+      idx = buckets.length
+      buckets.push({ teams: new Set(), minDate: e.date })
     }
-    if (!roundKey) roundKey = e.date.slice(0, 10)
-    names.forEach((n) => seen.add(n))
-    roundByEventId.set(e.id, roundKey)
+    const b = buckets[idx]
+    names.forEach((n) => b.teams.add(n))
+    if (e.date < b.minDate) b.minDate = e.date
+    bucketOfEvent.set(e.id, idx)
   }
+
+  const key = buckets.map((b) => b.minDate.slice(0, 10))
+  const roundByEventId = new Map<string, string>()
+  for (const [id, idx] of bucketOfEvent) roundByEventId.set(id, key[idx])
   return roundByEventId
 }
 
@@ -106,6 +121,23 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
       away_score: status === 'pending' ? null : toScore(away),
     }
   })
+
+  // Estabilidad de la fecha: si un partido YA está finalizado en la base, su
+  // fecha quedó definida — la preservamos para que la ventana móvil de sync no
+  // la "mueva" en corridas futuras. Solo se recalcula para partidos abiertos.
+  const apiIds = rows.map((r) => r.api_id)
+  const { data: existing } = await writer
+    .from('matches')
+    .select('api_id, round, status')
+    .in('api_id', apiIds)
+  const settled = new Map<number, string>()
+  for (const m of existing || []) {
+    if (m.status === 'finished' && m.round) settled.set(Number(m.api_id), m.round)
+  }
+  for (const r of rows) {
+    const keep = settled.get(r.api_id)
+    if (keep) r.round = keep
+  }
 
   const { error: upsertError } = await writer
     .from('matches')
