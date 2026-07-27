@@ -127,7 +127,13 @@ export default function DashboardSections({
   }, [matches]);
 
   const calendarioGroups = useMemo(
-    () => groupByRound(matches).sort((a, b) => a[0].localeCompare(b[0])),
+    () =>
+      groupByRound(matches)
+        // Una fecha "transcurrida" (todos sus partidos finalizados) sale del
+        // Calendario; su historial queda en Resultados. Dejamos solo las fechas
+        // con al menos un partido por jugar o en curso.
+        .filter(([, ms]) => ms.some((m) => m.status !== 'finished'))
+        .sort((a, b) => a[0].localeCompare(b[0])),
     [matches]
   );
 
