@@ -110,7 +110,20 @@ export default function DashboardSections({
     );
 
     const list = matches.filter((m) => m.status === 'finished' && window.has(roundKey(m)));
-    return groupByRound(list).sort((a, b) => b[0].localeCompare(a[0]));
+    // Más reciente arriba: fechas de la más actual a la más vieja, y DENTRO de
+    // cada fecha, el último partido jugado primero (para ver el resultado sin
+    // scrollear hasta el fondo).
+    return groupByRound(list)
+      .map(
+        ([key, ms]) =>
+          [
+            key,
+            [...ms].sort(
+              (a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime()
+            ),
+          ] as [string, MatchProps[]]
+      )
+      .sort((a, b) => b[0].localeCompare(a[0]));
   }, [matches]);
 
   const calendarioGroups = useMemo(
