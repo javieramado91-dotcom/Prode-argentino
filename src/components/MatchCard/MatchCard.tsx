@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from 'react';
 import styles from './MatchCard.module.css';
-import { savePrediction, getMatchPredictions, MatchPredictionRow } from '@/app/dashboard/actions';
+import { savePrediction } from '@/app/dashboard/actions';
 
 export interface MatchProps {
   id: string;
@@ -56,20 +56,6 @@ export default function MatchCard({ match }: { match: MatchProps }) {
 
   const hasPrediction = !!match.userPrediction;
   const showForm = canPredict && (!hasPrediction || editing);
-
-  // Pronósticos de compañeros de torneo (solo partidos empezados/terminados).
-  const [showPreds, setShowPreds] = useState(false);
-  const [preds, setPreds] = useState<MatchPredictionRow[] | null>(null);
-  const [predsError, setPredsError] = useState<string | null>(null);
-
-  const togglePreds = async () => {
-    const next = !showPreds;
-    setShowPreds(next);
-    if (next && preds === null) {
-      try { setPreds(await getMatchPredictions(match.id)); }
-      catch (e: any) { setPredsError(e.message || 'Error al cargar.'); }
-    }
-  };
 
   const dateFormatted = new Intl.DateTimeFormat('es-AR', {
     weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
@@ -195,34 +181,8 @@ export default function MatchCard({ match }: { match: MatchProps }) {
         </div>
       )}
 
-      {/* Pronósticos del torneo */}
-      {(isLive || isFinished || startedNotLive) && (
-        <div className={styles.predsSection}>
-          <button type="button" onClick={togglePreds} className={styles.predsToggle}>
-            {showPreds ? 'Ocultar pronósticos del torneo' : 'Ver pronósticos del torneo'}
-          </button>
-          {showPreds && (
-            <div className={styles.predsList}>
-              {predsError && <div className={styles.predsEmpty}>{predsError}</div>}
-              {preds === null && !predsError && <div className={styles.predsEmpty}>Cargando…</div>}
-              {preds !== null && preds.length === 0 && !predsError && (
-                <div className={styles.predsEmpty}>Nadie de tus torneos pronosticó este partido.</div>
-              )}
-              {(preds || []).map((p, i) => (
-                <div key={i} className={styles.predRow}>
-                  <span className={styles.predName}>{p.display_name}</span>
-                  <span className={styles.predScore}>{p.predicted_home_score} - {p.predicted_away_score}</span>
-                  {isFinished && p.points_earned != null ? (
-                    <span className={p.points_earned >= perfectPts ? styles.ptsPerfect : p.points_earned >= goodPts ? styles.ptsGood : styles.ptsZero}>+{p.points_earned}</span>
-                  ) : (
-                    <span className={styles.predLive}>en juego</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Los pronósticos de los rivales ahora se ven desde cada torneo
+          (solo miembros de ese torneo), no en la vista general. */}
     </div>
   );
 }

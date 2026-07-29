@@ -602,6 +602,33 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 6h) Pronósticos de un partido ACOTADOS a un torneo
+--     Cada usuario ve los pronósticos SOLO de los miembros de ese torneo (no de
+--     todos los usuarios). Siguen visibles únicamente si el partido ya empezó.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.get_group_match_predictions(gid uuid, mid uuid)
+returns table (display_name text, predicted_home_score int, predicted_away_score int, points_earned int)
+language sql
+security definer set search_path = public
+stable
+as $$
+  select coalesce(u.display_name, split_part(u.email, '@', 1)) as display_name,
+         p.predicted_home_score,
+         p.predicted_away_score,
+         p.points_earned
+  from public.predictions p
+  join public.users u on u.id = p.user_id
+  join public.matches m on m.id = p.match_id
+  join public.group_members gm on gm.user_id = p.user_id and gm.group_id = gid
+  where p.match_id = mid
+    and (m.status <> 'pending' or m.match_date <= now())   -- el partido ya empezó
+    and public.is_group_member(gid, auth.uid())            -- el que consulta es miembro
+    and p.predicted_home_score is not null
+  order by p.points_earned desc nulls last, display_name asc;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 6e) Notificaciones push (Web Push)
 --     - push_subscriptions: una fila por dispositivo/navegador suscripto.
 --     - notification_settings: preferencias por usuario (qué avisos quiere).

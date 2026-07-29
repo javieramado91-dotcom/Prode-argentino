@@ -23,6 +23,34 @@ export async function searchUsersForGroup(groupId: string, query: string): Promi
   return data || [];
 }
 
+export type GroupPrediction = {
+  display_name: string
+  predicted_home_score: number
+  predicted_away_score: number
+  points_earned: number | null
+}
+
+// Pronósticos de un partido, SOLO de los miembros de este torneo (y solo si el
+// partido ya empezó). Así cada uno ve a sus contrincantes, no a todos.
+export async function getGroupMatchPredictions(
+  groupId: string,
+  matchId: string
+): Promise<GroupPrediction[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Debés iniciar sesión.')
+
+  const { data, error } = await supabase.rpc('get_group_match_predictions', {
+    gid: groupId,
+    mid: matchId,
+  })
+  if (error) {
+    console.error('get_group_match_predictions:', error.message)
+    throw new Error('No se pudieron cargar los pronósticos.')
+  }
+  return data || []
+}
+
 // Agrega a una persona al torneo por su id (la eligió de la búsqueda por nombre).
 export async function addUserToGroup(groupId: string, userId: string) {
   const supabase = await createClient();
