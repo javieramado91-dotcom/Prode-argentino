@@ -717,6 +717,25 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 6k) Eliminar un torneo (solo el creador)
+-- ---------------------------------------------------------------------------
+
+create or replace function public.delete_group(gid uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception 'No autorizado'; end if;
+  if not exists (select 1 from public.groups where id = gid and owner_id = auth.uid()) then
+    raise exception 'Solo el creador puede eliminar el torneo';
+  end if;
+  delete from public.group_members where group_id = gid;
+  delete from public.groups where id = gid;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 6e) Notificaciones push (Web Push)
 --     - push_subscriptions: una fila por dispositivo/navegador suscripto.
 --     - notification_settings: preferencias por usuario (qué avisos quiere).

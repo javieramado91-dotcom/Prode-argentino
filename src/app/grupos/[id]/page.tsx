@@ -6,6 +6,7 @@ import AddMemberByName from '@/components/AddMemberByName/AddMemberByName'
 import TournamentFechas from '@/components/TournamentFechas/TournamentFechas'
 import TournamentRanking from '@/components/TournamentRanking/TournamentRanking'
 import RenewTournament from '@/components/RenewTournament/RenewTournament'
+import DeleteTournament from '@/components/DeleteTournament/DeleteTournament'
 import TopNav from '@/components/TopNav/TopNav'
 
 export const dynamic = 'force-dynamic'
@@ -149,6 +150,8 @@ export default async function GrupoDetallePage(props: {
       <div style={{ marginTop: '2rem' }}>
         <SeasonAwards scores={roundScores || []} roundOrder={roundOrder} context="torneo" title={group.name} />
       </div>
+
+      {isOwner && <DeleteTournament groupId={id} groupName={group.name} />}
     </main>
   )
 }

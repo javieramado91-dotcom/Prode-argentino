@@ -101,6 +101,18 @@ export async function renewGroupAction(formData: FormData) {
   redirect(newId ? `/grupos/${newId}` : '/grupos')
 }
 
+// Elimina un torneo (solo el creador). Redirige a "Mis torneos".
+export async function deleteGroupAction(groupId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { error } = await supabase.rpc('delete_group', { gid: groupId })
+  if (error) redirect(`/grupos/${groupId}?error=` + encodeURIComponent(error.message))
+
+  redirect('/grupos')
+}
+
 // Agrega a una persona al torneo por su id (la eligió de la búsqueda por nombre).
 export async function addUserToGroup(groupId: string, userId: string) {
   const supabase = await createClient();
