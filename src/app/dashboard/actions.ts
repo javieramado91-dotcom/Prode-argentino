@@ -73,3 +73,28 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
   revalidatePath('/dashboard');
   return { success: true };
 }
+
+export type MatchPredictionRow = {
+  display_name: string;
+  predicted_home_score: number;
+  predicted_away_score: number;
+  points_earned: number | null;
+};
+
+// Pronósticos de los rivales de tus torneos para un partido. La función SQL solo
+// devuelve filas si el partido ya empezó y solo de personas con las que compartís
+// al menos un torneo (no todos los usuarios). En la UI del dashboard, además, esto
+// se muestra únicamente mientras la fecha del partido NO esté finalizada; una vez
+// cerrada la fecha, el historial se ve desde el torneo.
+export async function getMatchPredictions(matchId: string): Promise<MatchPredictionRow[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Debes iniciar sesión.');
+
+  const { data, error } = await supabase.rpc('get_match_predictions', { mid: matchId });
+  if (error) {
+    console.error('get_match_predictions:', error.message);
+    throw new Error('No se pudieron cargar los pronósticos.');
+  }
+  return data || [];
+}

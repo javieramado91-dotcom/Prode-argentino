@@ -73,6 +73,16 @@ export default async function DashboardPage() {
     .slice(0, PREDICTABLE_ROUNDS)
   const predictableRounds = new Set(upcomingRounds)
 
+  // Fechas con TODOS sus partidos finalizados (fecha cerrada). Los pronósticos
+  // de los rivales solo se ven mientras la fecha NO esté cerrada.
+  const roundAllFinished = new Map<string, boolean>()
+  for (const m of dbMatches || []) {
+    const r = m.round as string
+    if (!r) continue
+    if (!roundAllFinished.has(r)) roundAllFinished.set(r, true)
+    if (m.status !== 'finished') roundAllFinished.set(r, false)
+  }
+
   const realMatches: MatchProps[] = (dbMatches || []).map((m: any) => {
     const pred = predictions?.find((p: any) => p.match_id === m.id)
     const isFuturePending = m.status === 'pending' && new Date(m.match_date).getTime() > now
@@ -89,6 +99,7 @@ export default async function DashboardPage() {
       featured: m.featured,
       round: m.round,
       predictable: isFuturePending && predictableRounds.has(m.round),
+      fechaOpen: m.round ? roundAllFinished.get(m.round) === false : false,
       userPrediction: pred
         ? {
             home: pred.predicted_home_score,
