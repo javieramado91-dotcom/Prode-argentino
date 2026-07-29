@@ -46,7 +46,11 @@ export function computeFechaWinners(scores: RoundScore[], roundOrder: string[]):
   for (const [round, rows] of byRound) {
     const max = Math.max(...rows.map((r) => r.points))
     if (max <= 0) continue // fecha sin ningún punto: sin ganador
-    const winners = rows.filter((r) => r.points === max).map((r) => r.display_name)
+    // Desempate: entre los que empatan en puntos, gana el que más resultados
+    // exactos clavó EN ESA FECHA. Si también empatan en exactos, comparten.
+    const tied = rows.filter((r) => r.points === max)
+    const maxExacts = Math.max(...tied.map((r) => r.exacts))
+    const winners = tied.filter((r) => r.exacts === maxExacts).map((r) => r.display_name)
     out.push({ round, fecha: nums.get(round) ?? null, winners, points: max })
   }
   // Más recientes primero.

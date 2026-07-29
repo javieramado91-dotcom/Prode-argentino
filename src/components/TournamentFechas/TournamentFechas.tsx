@@ -19,7 +19,7 @@ export type FechaMatch = {
 export type ActiveFecha = {
   round: string
   fecha: number | null
-  standings: { name: string; points: number }[]
+  standings: { name: string; points: number; exacts?: number }[]
   matches: FechaMatch[]
 }
 

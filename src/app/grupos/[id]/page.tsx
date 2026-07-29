@@ -89,8 +89,13 @@ export default async function GrupoDetallePage(props: {
       fecha: roundNum.get(round) ?? null,
       standings: scoresList
         .filter((s) => s.round === round)
-        .map((s) => ({ name: s.display_name as string, points: Number(s.points) }))
-        .sort((a, b) => b.points - a.points),
+        .map((s) => ({
+          name: s.display_name as string,
+          points: Number(s.points),
+          exacts: Number(s.exacts ?? 0),
+        }))
+        // Desempate: a igual puntaje, primero el que tiene más exactos EN ESA FECHA.
+        .sort((a, b) => b.points - a.points || b.exacts - a.exacts || a.name.localeCompare(b.name)),
       matches: ms.map((m) => ({
         id: m.id as string,
         home: m.home_team as string,

@@ -150,9 +150,17 @@ as $$
          coalesce(sum(p.points_earned), 0) as points
   from public.users u
   left join public.predictions p on p.user_id = u.id
+  left join public.matches m on m.id = p.match_id
   where u.is_approved = true
   group by u.id, u.display_name, u.email
-  order by points desc, display_name asc;
+  -- Desempate: a igual puntaje, primero el que tiene más resultados exactos.
+  order by points desc,
+           count(*) filter (
+             where m.status = 'finished'
+               and m.home_score = p.predicted_home_score
+               and m.away_score = p.predicted_away_score
+           ) desc,
+           display_name asc;
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -217,8 +225,10 @@ begin
     from mine
   ),
   pos as (
+    -- El puesto sigue el MISMO orden que la tabla (puntos y, a igual puntaje,
+    -- más resultados exactos), por eso numeramos la salida ya ordenada.
     select r.rnk from (
-      select l.user_id, rank() over (order by l.points desc) as rnk
+      select l.user_id, row_number() over () as rnk
       from public.get_leaderboard() l
     ) r where r.user_id = uid
   )
@@ -392,7 +402,16 @@ as $$
   where gm.group_id = gid
     and public.is_group_member(gid, auth.uid())  -- el que consulta debe ser miembro
   group by u.id, u.display_name, u.email
-  order by points desc, display_name asc;
+  -- Desempate: a igual puntaje, primero el que tiene más resultados exactos
+  -- (contando solo las fechas que puntúan en este torneo).
+  order by points desc,
+           count(*) filter (
+             where m.status = 'finished'
+               and m.home_score = p.predicted_home_score
+               and m.away_score = p.predicted_away_score
+               and (gr.start_round is null or m.round >= gr.start_round)
+           ) desc,
+           display_name asc;
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -508,7 +527,7 @@ as $$
   from scores s
   join public.users u on u.id = s.user_id and u.is_approved = true
   left join completeness c on c.round = s.round
-  order by s.round, s.points desc;
+  order by s.round, s.points desc, s.exacts desc, display_name asc;
 $$;
 
 -- Torneo: solo miembros, respetando la fecha de arranque del grupo.
@@ -553,7 +572,7 @@ as $$
   join public.users u on u.id = s.user_id
   left join completeness c on c.round = s.round
   where public.is_group_member(gid, auth.uid())  -- el que consulta debe ser miembro
-  order by s.round, s.points desc;
+  order by s.round, s.points desc, s.exacts desc, display_name asc;
 $$;
 
 -- ---------------------------------------------------------------------------
