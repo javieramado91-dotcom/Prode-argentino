@@ -1,11 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import Leaderboard from '@/components/Leaderboard/Leaderboard'
 import SeasonAwards from '@/components/SeasonAwards/SeasonAwards'
 import AddMemberByName from '@/components/AddMemberByName/AddMemberByName'
 import TournamentFechas from '@/components/TournamentFechas/TournamentFechas'
-import TournamentMembers from '@/components/TournamentMembers/TournamentMembers'
+import TournamentRanking from '@/components/TournamentRanking/TournamentRanking'
 import RenewTournament from '@/components/RenewTournament/RenewTournament'
 import TopNav from '@/components/TopNav/TopNav'
 
@@ -141,9 +140,7 @@ export default async function GrupoDetallePage(props: {
 
       <RenewTournament groupId={id} finalized={finalized} waiting={waiting} isOwner={isOwner} />
 
-      <Leaderboard title="Ranking del torneo" users={users} />
-
-      <TournamentMembers groupId={id} members={users} roundOrder={roundOrder} />
+      <TournamentRanking groupId={id} groupName={group.name} members={users} roundOrder={roundOrder} />
 
       <TournamentFechas groupId={id} groupName={group.name} fechas={activeFechas} />
 
