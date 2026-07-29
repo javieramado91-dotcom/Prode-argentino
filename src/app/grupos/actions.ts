@@ -51,6 +51,56 @@ export async function getGroupMatchPredictions(
   return data || []
 }
 
+export type MemberResult = {
+  round: string
+  match_id: string
+  match_date: string
+  home_team: string
+  away_team: string
+  home_score: number | null
+  away_score: number | null
+  status: 'pending' | 'in_progress' | 'finished'
+  predicted_home_score: number
+  predicted_away_score: number
+  points_earned: number | null
+}
+
+// Resultados de un jugador dentro del torneo (para segmentar por fecha en el
+// front). Solo partidos empezados, solo miembros, desde la fecha de arranque.
+export async function getGroupMemberResults(
+  groupId: string,
+  memberId: string
+): Promise<MemberResult[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Debés iniciar sesión.')
+
+  const { data, error } = await supabase.rpc('get_group_member_results', {
+    gid: groupId,
+    uid: memberId,
+  })
+  if (error) {
+    console.error('get_group_member_results:', error.message)
+    throw new Error('No se pudieron cargar los resultados.')
+  }
+  return data || []
+}
+
+// Renueva el torneo para el nuevo torneo argentino (solo el creador, y solo si
+// el torneo argentino terminó). Redirige al torneo nuevo.
+export async function renewGroupAction(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const groupId = formData.get('groupId') as string
+  const { data, error } = await supabase.rpc('renew_group', { gid: groupId })
+  if (error) redirect(`/grupos/${groupId}?error=` + encodeURIComponent(error.message))
+
+  const newId = data?.[0]?.id
+  redirect(newId ? `/grupos/${newId}` : '/grupos')
+}
+
 // Agrega a una persona al torneo por su id (la eligió de la búsqueda por nombre).
 export async function addUserToGroup(groupId: string, userId: string) {
   const supabase = await createClient();

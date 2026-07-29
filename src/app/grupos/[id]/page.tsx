@@ -5,6 +5,8 @@ import Leaderboard from '@/components/Leaderboard/Leaderboard'
 import SeasonAwards from '@/components/SeasonAwards/SeasonAwards'
 import AddMemberByName from '@/components/AddMemberByName/AddMemberByName'
 import TournamentFechas from '@/components/TournamentFechas/TournamentFechas'
+import TournamentMembers from '@/components/TournamentMembers/TournamentMembers'
+import RenewTournament from '@/components/RenewTournament/RenewTournament'
 import TopNav from '@/components/TopNav/TopNav'
 
 export const dynamic = 'force-dynamic'
@@ -13,8 +15,10 @@ type Row = { user_id: string; display_name: string; points: number }
 
 export default async function GrupoDetallePage(props: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
 }) {
   const { id } = await props.params
+  const { error: errorMsg } = await props.searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -22,7 +26,7 @@ export default async function GrupoDetallePage(props: {
 
   const { data: group } = await supabase
     .from('groups')
-    .select('name, invite_code, start_round')
+    .select('name, invite_code, start_round, owner_id')
     .eq('id', id)
     .single()
 
@@ -45,6 +49,15 @@ export default async function GrupoDetallePage(props: {
     const idx = roundOrder.indexOf(group.start_round)
     if (idx >= 0) startFechaNum = idx + 1
   }
+
+  // Estado del torneo argentino / del torneo de amigos.
+  // "Terminó" = no quedan partidos sin finalizar (ESPN no da un flag de fin).
+  const maxRound = roundOrder[roundOrder.length - 1] || null
+  const tournamentEnded = matchesList.length > 0 && matchesList.every((m: any) => m.status === 'finished')
+  const groupStarted = !group.start_round || (maxRound !== null && group.start_round <= maxRound)
+  const finalized = tournamentEnded && groupStarted
+  const waiting = tournamentEnded && !groupStarted
+  const isOwner = group.owner_id === user.id
 
   const { data } = await supabase.rpc('get_group_leaderboard', { gid: id })
   const rows: Row[] = data || []
@@ -120,7 +133,17 @@ export default async function GrupoDetallePage(props: {
         </div>
       </header>
 
+      {errorMsg && (
+        <div className="glass-panel" style={{ padding: '0.85rem 1.1rem', marginBottom: '1.25rem', borderColor: 'var(--color-danger)', color: 'var(--color-danger)', fontSize: '0.9rem' }}>
+          ⚠️ {errorMsg}
+        </div>
+      )}
+
+      <RenewTournament groupId={id} finalized={finalized} waiting={waiting} isOwner={isOwner} />
+
       <Leaderboard title="Ranking del torneo" users={users} />
+
+      <TournamentMembers groupId={id} members={users} roundOrder={roundOrder} />
 
       <TournamentFechas groupId={id} groupName={group.name} fechas={activeFechas} />
 

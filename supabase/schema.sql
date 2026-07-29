@@ -629,6 +629,94 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 6i) Resultados de UN jugador dentro del torneo (segmentado por fecha)
+--     Al tocar a una persona en el torneo se ven sus pronósticos por fecha,
+--     desde la fecha en que arranca el torneo (start_round). Privacidad: solo
+--     partidos ya empezados, solo miembros del torneo.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.get_group_member_results(gid uuid, uid uuid)
+returns table (
+  round text,
+  match_id uuid,
+  match_date timestamptz,
+  home_team text,
+  away_team text,
+  home_score int,
+  away_score int,
+  status text,
+  predicted_home_score int,
+  predicted_away_score int,
+  points_earned int
+)
+language sql
+security definer set search_path = public
+stable
+as $$
+  with grp as (select start_round from public.groups where id = gid)
+  select m.round, m.id, m.match_date, m.home_team, m.away_team, m.home_score, m.away_score, m.status,
+         p.predicted_home_score, p.predicted_away_score, p.points_earned
+  from public.predictions p
+  join public.matches m on m.id = p.match_id
+  cross join grp
+  where p.user_id = uid
+    and public.is_group_member(gid, auth.uid())            -- el que consulta es miembro
+    and public.is_group_member(gid, uid)                   -- el objetivo es miembro
+    and (m.status <> 'pending' or m.match_date <= now())   -- el partido ya empezó
+    and (grp.start_round is null or m.round >= grp.start_round)
+    and p.predicted_home_score is not null
+  order by m.match_date desc;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 6j) Renovar torneo (nuevo torneo argentino)
+--     Solo el creador, y solo cuando el torneo argentino terminó (no quedan
+--     partidos sin finalizar). Crea un torneo nuevo con los mismos miembros que
+--     puntúa desde la próxima fecha (start_round = día siguiente a la última).
+-- ---------------------------------------------------------------------------
+
+create or replace function public.renew_group(gid uuid)
+returns table (id uuid, invite_code text)
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  new_id uuid;
+  code   text;
+  cutoff text;
+  g      record;
+begin
+  if auth.uid() is null then raise exception 'No autorizado'; end if;
+  select * into g from public.groups where id = gid;
+  if g is null then raise exception 'Torneo no encontrado'; end if;
+  if g.owner_id <> auth.uid() then raise exception 'Solo el creador puede renovar el torneo'; end if;
+  if exists (select 1 from public.matches where status <> 'finished') then
+    raise exception 'El torneo argentino todavía no terminó';
+  end if;
+
+  -- El nuevo torneo puntúa solo desde las fechas posteriores a la última conocida.
+  select to_char((max(round::date) + interval '1 day'), 'YYYY-MM-DD') into cutoff
+  from public.matches where round is not null;
+
+  loop
+    code := upper(substring(md5(random()::text) for 6));
+    exit when not exists (select 1 from public.groups gg where gg.invite_code = code);
+  end loop;
+
+  insert into public.groups (name, owner_id, invite_code, start_round)
+  values (g.name, auth.uid(), code, cutoff)
+  returning groups.id into new_id;
+
+  -- Copia los mismos miembros al torneo nuevo.
+  insert into public.group_members (group_id, user_id)
+  select new_id, gm.user_id from public.group_members gm where gm.group_id = gid
+  on conflict do nothing;
+
+  return query select new_id, code;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 6e) Notificaciones push (Web Push)
 --     - push_subscriptions: una fila por dispositivo/navegador suscripto.
 --     - notification_settings: preferencias por usuario (qué avisos quiere).
