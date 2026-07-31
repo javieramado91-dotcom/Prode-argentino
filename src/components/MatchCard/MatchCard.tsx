@@ -12,6 +12,7 @@ export interface MatchProps {
   awayLogo?: string;
   matchDate: string;
   status: 'pending' | 'in_progress' | 'finished';
+  statusDetail?: string | null;
   homeScore?: number;
   awayScore?: number;
   featured?: boolean;
@@ -81,9 +82,12 @@ export default function MatchCard({ match }: { match: MatchProps }) {
     weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   }).format(new Date(match.matchDate));
 
-  // Minuto aproximado de juego (contado desde el inicio).
+  // Minuto de juego: preferimos el REAL que informa ESPN (no cuenta el
+  // entretiempo ni los atrasos). Si todavía no sincronizó, caemos al cálculo
+  // aproximado desde la hora de inicio.
   const liveMinute = Math.max(1, Math.floor((now - kickoff) / 60000));
-  const liveLabel = liveMinute > 90 ? "90+'" : `${liveMinute}'`;
+  const computedLabel = liveMinute > 90 ? "90+'" : `${liveMinute}'`;
+  const liveLabel = match.statusDetail || (mounted ? computedLabel : '');
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +123,7 @@ export default function MatchCard({ match }: { match: MatchProps }) {
 
       <div className={styles.header}>
         {isLive ? (
-          <span className={styles.liveTag}><span className={styles.dot} /> En vivo{mounted ? ` · ${liveLabel}` : ''}</span>
+          <span className={styles.liveTag}><span className={styles.dot} /> En vivo{liveLabel ? ` · ${liveLabel}` : ''}</span>
         ) : isFinished ? (
           <span className={styles.finishedTag}>Finalizado</span>
         ) : startedNotLive ? (

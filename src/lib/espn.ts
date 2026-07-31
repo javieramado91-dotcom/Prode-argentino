@@ -21,7 +21,10 @@ type EspnCompetitor = {
 type EspnEvent = {
   id: string
   date: string
-  status: { type: { state: 'pre' | 'in' | 'post' } }
+  status: {
+    displayClock?: string
+    type: { state: 'pre' | 'in' | 'post'; name?: string }
+  }
   competitions: { competitors: EspnCompetitor[] }[]
 }
 
@@ -29,6 +32,13 @@ function mapState(state: string): 'pending' | 'in_progress' | 'finished' {
   if (state === 'in') return 'in_progress'
   if (state === 'post') return 'finished'
   return 'pending'
+}
+// Minuto real del partido según ESPN (no calculado desde la hora de inicio, así
+// no se le suma el entretiempo ni los atrasos). Solo para partidos en curso.
+function liveDetail(e: EspnEvent): string | null {
+  if (e.status.type.state !== 'in') return null
+  if (e.status.type.name === 'STATUS_HALFTIME') return 'Entretiempo'
+  return e.status.displayClock || null // ej: "65'", "90'+3'"
 }
 function toScore(c: EspnCompetitor): number | null {
   const n = parseInt(c?.score ?? '', 10)
@@ -117,6 +127,7 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
       match_date: e.date,
       round: rounds.get(e.id) ?? e.date.slice(0, 10),
       status,
+      status_detail: liveDetail(e),
       home_score: status === 'pending' ? null : toScore(home),
       away_score: status === 'pending' ? null : toScore(away),
     }

@@ -21,6 +21,8 @@ alter table public.matches add column if not exists home_logo  text;
 alter table public.matches add column if not exists away_logo  text;
 -- "Partido de la Fecha": vale doble.
 alter table public.matches add column if not exists featured   boolean not null default false;
+-- Minuto real del partido en vivo según ESPN (ej: "65'", "Entretiempo").
+alter table public.matches add column if not exists status_detail text;
 
 -- Evita duplicados al sincronizar por id de la API.
 -- IMPORTANTE: índice único COMPLETO (no parcial): el upsert de Supabase

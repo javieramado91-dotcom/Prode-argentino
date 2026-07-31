@@ -94,6 +94,7 @@ export default async function DashboardPage() {
       awayLogo: m.away_logo,
       matchDate: m.match_date,
       status: m.status,
+      statusDetail: m.status_detail,
       homeScore: m.home_score,
       awayScore: m.away_score,
       featured: m.featured,
