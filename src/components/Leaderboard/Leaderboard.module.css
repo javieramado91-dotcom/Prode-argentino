@@ -45,6 +45,10 @@
 
 .tableContainer {
   padding: 1rem;
+  /* Red de seguridad: si aún así no entra, scrollea acá adentro en vez de que
+     la columna de puntos quede cortada por el overflow:hidden de la tarjeta. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
@@ -100,6 +104,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  min-width: 0; /* deja que el nombre se recorte en vez de empujar la columna Pts */
 }
 
 .avatar {
@@ -125,6 +130,8 @@
 .playerName {
   font-weight: 600;
   font-size: 1.05rem;
+  min-width: 0;
+  overflow-wrap: anywhere; /* nombres largos cortan en vez de desbordar */
 }
 
 .topThree td {
@@ -143,4 +150,45 @@
   text-align: center !important;
   color: var(--color-text-muted);
   padding: 3rem !important;
+}
+
+/* ================= Pantallas chicas (celulares) ================= */
+/* En equipos angostos la tabla no entraba y la columna de puntos quedaba
+   cortada. Achicamos todo para que siempre se vean Posición, Jugador y Pts. */
+@media (max-width: 480px) {
+  .tableContainer {
+    padding: 0.5rem;
+  }
+  .table td {
+    padding: 0.6rem 0.4rem;
+  }
+  .table th {
+    padding: 0.4rem 0.4rem;
+    font-size: 0.72rem;
+  }
+  .posCol {
+    width: 34px;
+    font-size: 1rem;
+  }
+  .ptsCol {
+    width: 44px;
+    font-size: 1.05rem;
+  }
+  .avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 0.72rem;
+  }
+  .playerInfo {
+    gap: 0.55rem;
+  }
+  .playerName {
+    font-size: 0.9rem;
+  }
+  .boardHeader {
+    padding: 1rem 0.75rem;
+  }
+  .boardHeader h3 {
+    font-size: 1rem;
+  }
 }
