@@ -4,6 +4,5 @@
 // (Se cuentan las fechas que todavía tienen partidos por jugar.)
 export const PREDICTABLE_ROUNDS = 3
 
-// Resultados del usuario: la fecha ACTUAL + 2 fechas hacia atrás.
-// (El historial completo queda siempre en el Calendario.)
-export const RESULT_ROUNDS_BACK = 2
+// Nota: la pestaña Resultados NO usa ventana: muestra todo el historial de
+// partidos jugados (el Calendario ya no lista las fechas transcurridas).

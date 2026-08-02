@@ -5,7 +5,6 @@ import MatchCard, { MatchProps } from '../MatchCard/MatchCard';
 import Leaderboard from '../Leaderboard/Leaderboard';
 import SeasonAwards from '../SeasonAwards/SeasonAwards';
 import styles from './DashboardSections.module.css';
-import { RESULT_ROUNDS_BACK } from '@/lib/prode';
 import type { RoundScore } from '@/lib/awards';
 
 type UserScore = { id: string; name: string; points: number };
@@ -96,20 +95,15 @@ export default function DashboardSections({
   }, [matches]);
 
   const resultadoGroups = useMemo(() => {
-    // Ventana relativa a la fecha ACTUAL: la fecha en curso + 2 hacia atrás.
-    // La fecha actual es la primera que todavía tiene partidos sin terminar;
-    // si el campeonato terminó, es la última. El historial completo queda
-    // siempre disponible en el Calendario.
-    const sortedKeys = [...new Set(matches.map(roundKey))].sort();
-    let curIdx = sortedKeys.findIndex((k) =>
-      matches.some((m) => roundKey(m) === k && m.status !== 'finished')
-    );
-    if (curIdx === -1) curIdx = sortedKeys.length - 1;
-    const window = new Set(
-      sortedKeys.slice(Math.max(0, curIdx - RESULT_ROUNDS_BACK), curIdx + 1)
-    );
-
-    const list = matches.filter((m) => m.status === 'finished' && window.has(roundKey(m)));
+    // TODOS los partidos ya jugados, agrupados por fecha.
+    //
+    // Antes esto usaba una ventana móvil (fecha actual + 2 hacia atrás), donde
+    // la "fecha actual" era la primera con algún partido sin terminar. Con un
+    // partido POSTERGADO esa fecha quedaba clavada en el pasado y los
+    // resultados de las fechas siguientes no se mostraban. Además el Calendario
+    // ya no lista las fechas transcurridas, así que Resultados es el único
+    // lugar del historial: no puede esconder nada.
+    const list = matches.filter((m) => m.status === 'finished');
     // Más reciente arriba: fechas de la más actual a la más vieja, y DENTRO de
     // cada fecha, el último partido jugado primero (para ver el resultado sin
     // scrollear hasta el fondo).

@@ -43,11 +43,15 @@ export default function MatchCard({ match }: { match: MatchProps }) {
   // `mounted` evita desajustes de hidratación con valores dependientes de la hora.
   const [now, setNow] = useState(() => Date.now());
   const [mounted, setMounted] = useState(false);
+  // Un partido terminado no necesita reloj: sin esto, el historial completo de
+  // Resultados dejaba cientos de temporizadores corriendo (pesado en celulares).
+  const needsClock = match.status !== 'finished';
   useEffect(() => {
     setMounted(true);
+    if (!needsClock) return;
     const id = setInterval(() => setNow(Date.now()), 15000);
     return () => clearInterval(id);
-  }, []);
+  }, [needsClock]);
 
   const kickoff = new Date(match.matchDate).getTime();
   const hasStarted = kickoff <= now;
