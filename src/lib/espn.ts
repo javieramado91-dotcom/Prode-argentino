@@ -8,10 +8,16 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 const ESPN_LEAGUE = process.env.ESPN_LEAGUE_SLUG || 'arg.1'
 
 // Ventana a sincronizar: partidos recientes + en curso + próximas fechas.
-// OJO: ESPN devuelve como máximo 100 eventos por consulta; con una ventana
-// demasiado amplia trunca el final y una fecha puede quedar "a medias".
 const DAYS_BACK = 10
 const DAYS_AHEAD = 28
+
+// ESPN devuelve como MÁXIMO 100 eventos por consulta y trunca el final sin
+// avisar. La ventana completa (38 días ≈ 105 partidos) ya tocaba ese tope: la
+// última fecha llegaba incompleta (10 de 15 partidos). Por eso la pedimos en
+// tramos y unimos los resultados. Con ~19 días por tramo son ≈3 fechas
+// (≈45-60 partidos), bien lejos del tope.
+const CHUNK_DAYS = 19
+const ESPN_MAX_EVENTS = 100
 
 type EspnCompetitor = {
   homeAway: 'home' | 'away'
@@ -89,6 +95,46 @@ function assignRounds(events: EspnEvent[]): Map<string, string> {
   return roundByEventId
 }
 
+// Parte la ventana en tramos consecutivos (sin huecos ni superposición).
+function windowRanges(now: Date): [string, string][] {
+  const startMs = now.getTime() - DAYS_BACK * 86400000
+  const endMs = now.getTime() + DAYS_AHEAD * 86400000
+  const ranges: [string, string][] = []
+  for (let s = startMs; s <= endMs; s += CHUNK_DAYS * 86400000) {
+    const e = Math.min(s + (CHUNK_DAYS - 1) * 86400000, endMs)
+    ranges.push([ymd(new Date(s)), ymd(new Date(e))])
+  }
+  return ranges
+}
+
+// Trae toda la ventana pidiéndola por tramos (en paralelo) y uniendo por id.
+// Si FALLA algún tramo lanza: preferimos abortar la sincronización antes que
+// guardar una vista parcial, porque `assignRounds` deduce las fechas a partir
+// de los partidos presentes y con un hueco podría numerarlas mal.
+async function fetchWindow(now: Date): Promise<EspnEvent[]> {
+  const chunks = await Promise.all(
+    windowRanges(now).map(async ([from, to]) => {
+      const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${ESPN_LEAGUE}/scoreboard?dates=${from}-${to}`
+      const res = await fetch(url, { cache: 'no-store' })
+      if (!res.ok) throw new Error(`ESPN respondió ${res.status} (tramo ${from}-${to})`)
+      const data = await res.json()
+      const events: EspnEvent[] = data.events || []
+      // Red de alerta: si un tramo llega al tope, ESPN pudo haberlo cortado.
+      if (events.length >= ESPN_MAX_EVENTS) {
+        console.error(
+          `sync ESPN: el tramo ${from}-${to} devolvió ${events.length} eventos (tope ${ESPN_MAX_EVENTS}): puede venir truncado, achicar CHUNK_DAYS.`
+        )
+      }
+      return events
+    })
+  )
+
+  // Unimos deduplicando por id (los tramos no se superponen, pero por las dudas).
+  const byId = new Map<string, EspnEvent>()
+  for (const events of chunks) for (const e of events) byId.set(e.id, e)
+  return [...byId.values()]
+}
+
 export type SyncResult =
   | { ok: true; count: number }
   | { ok: false; phase: 'espn' | 'upsert'; empty?: boolean; error: any }
@@ -98,16 +144,13 @@ export type SyncResult =
 // sesión del admin). No hace throttle ni maneja HTTP: eso queda en la ruta.
 export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
   const now = new Date()
-  const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${ESPN_LEAGUE}/scoreboard?dates=${ymd(
-    new Date(now.getTime() - DAYS_BACK * 86400000)
-  )}-${ymd(new Date(now.getTime() + DAYS_AHEAD * 86400000))}`
 
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) {
-    return { ok: false, phase: 'espn', error: new Error(`ESPN respondió ${res.status}`) }
+  let events: EspnEvent[]
+  try {
+    events = await fetchWindow(now)
+  } catch (error) {
+    return { ok: false, phase: 'espn', error }
   }
-  const data = await res.json()
-  const events: EspnEvent[] = data.events || []
   if (events.length === 0) {
     return { ok: false, phase: 'espn', empty: true, error: new Error('ESPN no devolvió partidos.') }
   }
