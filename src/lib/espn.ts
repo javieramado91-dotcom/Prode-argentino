@@ -3,6 +3,7 @@
 // /api/notify (cron), para no duplicarla.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { assignStableRounds } from '@/lib/rounds'
 
 // Fuente: API pública de ESPN (gratis, temporada actual, en vivo).
 const ESPN_LEAGUE = process.env.ESPN_LEAGUE_SLUG || 'arg.1'
@@ -22,7 +23,7 @@ const ESPN_MAX_EVENTS = 100
 type EspnCompetitor = {
   homeAway: 'home' | 'away'
   score?: string
-  team: { displayName: string; logo?: string }
+  team: { id?: string; displayName: string; logo?: string }
 }
 type EspnEvent = {
   id: string
@@ -53,48 +54,6 @@ function toScore(c: EspnCompetitor): number | null {
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10).replace(/-/g, '')
 }
-function teamsOf(e: EspnEvent): string[] {
-  return e.competitions[0].competitors.map((c) => c.team.displayName)
-}
-
-// Agrupa en "fechas". ESPN no da el número de fecha oficial, así que lo
-// deducimos: en cada fecha, cada equipo juega EXACTAMENTE una vez.
-//
-// Algoritmo de "empaquetado": recorremos los partidos por fecha y asignamos
-// cada uno a la PRIMERA fecha (bucket) donde todavía no jugó NINGUNO de sus dos
-// equipos. Esto tolera los partidos postergados: un partido movido a más
-// adelante vuelve a caer en su fecha original (donde sus equipos siguen libres),
-// en vez de romper la numeración como haría un corte por "primer repetido".
-// La fecha se identifica por el día de su primer partido (YYYY-MM-DD), estable.
-function assignRounds(events: EspnEvent[]): Map<string, string> {
-  const sorted = [...events].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  )
-
-  const buckets: { teams: Set<string>; minDate: string }[] = []
-  const bucketOfEvent = new Map<string, number>()
-
-  for (const e of sorted) {
-    const names = teamsOf(e)
-    // Primer bucket donde AMBOS equipos están libres (una fecha completa de 30
-    // equipos ya no acepta a nadie, así que las fechas cerradas se saltean solas).
-    let idx = buckets.findIndex((b) => names.every((n) => !b.teams.has(n)))
-    if (idx === -1) {
-      idx = buckets.length
-      buckets.push({ teams: new Set(), minDate: e.date })
-    }
-    const b = buckets[idx]
-    names.forEach((n) => b.teams.add(n))
-    if (e.date < b.minDate) b.minDate = e.date
-    bucketOfEvent.set(e.id, idx)
-  }
-
-  const key = buckets.map((b) => b.minDate.slice(0, 10))
-  const roundByEventId = new Map<string, string>()
-  for (const [id, idx] of bucketOfEvent) roundByEventId.set(id, key[idx])
-  return roundByEventId
-}
-
 // Parte la ventana en tramos consecutivos (sin huecos ni superposición).
 function windowRanges(now: Date): [string, string][] {
   const startMs = now.getTime() - DAYS_BACK * 86400000
@@ -109,8 +68,8 @@ function windowRanges(now: Date): [string, string][] {
 
 // Trae toda la ventana pidiéndola por tramos (en paralelo) y uniendo por id.
 // Si FALLA algún tramo lanza: preferimos abortar la sincronización antes que
-// guardar una vista parcial, porque `assignRounds` deduce las fechas a partir
-// de los partidos presentes y con un hueco podría numerarlas mal.
+// guardar una vista parcial, porque el agrupador deduce las fechas a partir de
+// los partidos presentes y con un hueco podría numerarlas mal.
 async function fetchWindow(now: Date): Promise<EspnEvent[]> {
   const chunks = await Promise.all(
     windowRanges(now).map(async ([from, to]) => {
@@ -155,7 +114,26 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
     return { ok: false, phase: 'espn', empty: true, error: new Error('ESPN no devolvió partidos.') }
   }
 
-  const rounds = assignRounds(events)
+  // Conservamos las claves de las fechas ya consolidadas. Así un partido
+  // adelantado/postergado se reincorpora a su fecha real sin crear una fecha
+  // fantasma ni renombrar las demás.
+  const { data: existing } = await writer
+    .from('matches')
+    .select('api_id, round')
+
+  const rounds = assignStableRounds(
+    events.map((event) => ({
+      id: event.id,
+      date: event.date,
+      teams: event.competitions[0].competitors.map(
+        (competitor) => competitor.team.id || competitor.team.displayName
+      ),
+    })),
+    (existing || []).map((match) => ({
+      apiId: String(match.api_id),
+      round: match.round,
+    }))
+  )
   const rows = events.map((e) => {
     const comp = e.competitions[0].competitors
     const home = comp.find((c) => c.homeAway === 'home')!
@@ -175,23 +153,6 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
       away_score: status === 'pending' ? null : toScore(away),
     }
   })
-
-  // Estabilidad de la fecha: si un partido YA está finalizado en la base, su
-  // fecha quedó definida — la preservamos para que la ventana móvil de sync no
-  // la "mueva" en corridas futuras. Solo se recalcula para partidos abiertos.
-  const apiIds = rows.map((r) => r.api_id)
-  const { data: existing } = await writer
-    .from('matches')
-    .select('api_id, round, status')
-    .in('api_id', apiIds)
-  const settled = new Map<number, string>()
-  for (const m of existing || []) {
-    if (m.status === 'finished' && m.round) settled.set(Number(m.api_id), m.round)
-  }
-  for (const r of rows) {
-    const keep = settled.get(r.api_id)
-    if (keep) r.round = keep
-  }
 
   const { error: upsertError } = await writer
     .from('matches')
