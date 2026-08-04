@@ -15,6 +15,14 @@ export type FechaWinner = {
   fecha: number | null
   winners: string[] // nombres (puede haber empate)
   points: number
+  standings: FechaStanding[]
+}
+
+export type FechaStanding = {
+  userId: string
+  name: string
+  points: number
+  exacts: number
 }
 
 export type Award = {
@@ -44,14 +52,22 @@ export function computeFechaWinners(scores: RoundScore[], roundOrder: string[]):
 
   const out: FechaWinner[] = []
   for (const [round, rows] of byRound) {
-    const max = Math.max(...rows.map((r) => r.points))
+    const standings = rows
+      .map((r) => ({
+        userId: r.user_id,
+        name: r.display_name,
+        points: Number(r.points),
+        exacts: Number(r.exacts),
+      }))
+      .sort((a, b) => b.points - a.points || b.exacts - a.exacts || a.name.localeCompare(b.name, 'es'))
+    const max = Math.max(...standings.map((r) => r.points))
     if (max <= 0) continue // fecha sin ningún punto: sin ganador
     // Desempate: entre los que empatan en puntos, gana el que más resultados
     // exactos clavó EN ESA FECHA. Si también empatan en exactos, comparten.
-    const tied = rows.filter((r) => r.points === max)
+    const tied = standings.filter((r) => r.points === max)
     const maxExacts = Math.max(...tied.map((r) => r.exacts))
-    const winners = tied.filter((r) => r.exacts === maxExacts).map((r) => r.display_name)
-    out.push({ round, fecha: nums.get(round) ?? null, winners, points: max })
+    const winners = tied.filter((r) => r.exacts === maxExacts).map((r) => r.name)
+    out.push({ round, fecha: nums.get(round) ?? null, winners, points: max, standings })
   }
   // Más recientes primero.
   out.sort((a, b) => (b.fecha ?? 0) - (a.fecha ?? 0) || b.round.localeCompare(a.round))

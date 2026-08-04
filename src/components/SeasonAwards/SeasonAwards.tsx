@@ -1,5 +1,6 @@
 import { computeFechaWinners, computeAwards, type RoundScore } from '@/lib/awards'
 import AwardsShare from './AwardsShare'
+import FechaWinners from './FechaWinners'
 
 // Muestra los premios de la temporada + el ganador de cada fecha.
 // Sirve tanto en la general (dashboard) como dentro de un torneo.
@@ -83,42 +84,7 @@ export default function SeasonAwards({
 
       {/* Ganador de cada fecha */}
       <h3 style={{ margin: '0 0 0.9rem', fontSize: '1.1rem' }}>🏆 Ganador de cada fecha</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {fechaWinners.map((f) => (
-          <div
-            key={f.round}
-            className="glass-panel"
-            style={{
-              padding: '0.8rem 1rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              flexWrap: 'wrap',
-            }}
-          >
-            <span
-              style={{
-                fontWeight: 800,
-                color: 'var(--color-text-muted)',
-                minWidth: 74,
-                fontSize: '0.9rem',
-              }}
-            >
-              {f.fecha ? `Fecha ${f.fecha}` : 'Fecha'}
-            </span>
-            <span style={{ fontSize: '1.2rem' }}>🏆</span>
-            <span style={{ fontWeight: 700, flex: 1, minWidth: 120 }}>
-              {f.winners.join(', ')}
-            </span>
-            <span
-              className="stat-chip"
-              style={{ fontSize: '0.82rem', whiteSpace: 'nowrap' }}
-            >
-              {f.points} pts
-            </span>
-          </div>
-        ))}
-      </div>
+      <FechaWinners title={shareTitle} fechas={fechaWinners} />
     </div>
   )
 }

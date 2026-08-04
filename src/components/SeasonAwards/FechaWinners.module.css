@@ -1,0 +1,74 @@
+.list { display: flex; flex-direction: column; gap: .65rem; }
+.card { overflow: hidden; }
+.summary { width: 100%; min-height: 72px; padding: .8rem 1rem; display: grid; grid-template-columns: 82px 28px minmax(0, 1fr) auto 24px; align-items: center; gap: .7rem; color: var(--color-text-main); background: transparent; border: 0; font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.summary:hover { background: rgba(56, 189, 248, .045); }
+.summary:focus-visible { outline: 3px solid var(--color-accent); outline-offset: -3px; border-radius: var(--border-radius-md); }
+.fecha { color: var(--color-text-muted); font-size: .9rem; font-weight: 800; }
+.trophy { width: 28px; height: 28px; padding: 4px; border-radius: 9px; color: var(--color-warning); background: rgba(251, 191, 36, .1); }
+.trophy svg, .chevron svg, .exportAction svg { width: 100%; height: 100%; display: block; }
+.winner { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 750; }
+.points { padding: .45rem .75rem; border: 1px solid rgba(56, 189, 248, .2); border-radius: 999px; color: var(--color-accent); background: rgba(56, 189, 248, .07); font-size: .82rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.chevron { width: 24px; height: 24px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+.chevronOpen { transform: rotate(180deg); }
+.details { padding: 0 1rem 1rem; border-top: 1px solid rgba(148, 163, 184, .11); animation: reveal .22s ease-out; }
+.detailsHeader { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.detailsHeader strong, .detailsHeader span { display: block; }
+.detailsHeader strong { font-size: .95rem; }
+.detailsHeader > div > span { margin-top: .15rem; color: var(--color-text-muted); font-size: .78rem; }
+.exportAction { display: flex; align-items: center; gap: .55rem; }
+.exportAction button { min-height: 44px; }
+.exportAction button svg { width: 18px; height: 18px; }
+.exportAction button:disabled { cursor: wait; opacity: .68; }
+.status { color: var(--color-text-muted); font-size: .72rem; }
+.table { overflow: hidden; border: 1px solid rgba(148, 163, 184, .1); border-radius: 12px; background: rgba(2, 6, 16, .25); }
+.tableRow { min-height: 48px; padding: .55rem .75rem; display: grid; grid-template-columns: 44px minmax(0, 1fr) 70px 58px; align-items: center; gap: .5rem; border-top: 1px solid rgba(148, 163, 184, .08); font-size: .86rem; }
+.tableHead { min-height: 36px; border-top: 0; color: var(--color-text-muted); background: rgba(148, 163, 184, .045); font-size: .68rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.tableRow > :nth-child(3), .tableRow > :nth-child(4) { text-align: right; }
+.winnerRow { background: linear-gradient(90deg, rgba(251, 191, 36, .1), rgba(56, 189, 248, .055)); }
+.position { color: var(--color-text-muted); font-weight: 800; font-variant-numeric: tabular-nums; }
+.player { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+.winnerLabel { margin-left: .5rem; padding: .15rem .4rem; border-radius: 999px; color: #fcd34d; background: rgba(251, 191, 36, .12); font-size: .62rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+.exacts { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.score { color: var(--color-accent); font-size: .95rem; font-variant-numeric: tabular-nums; }
+
+.exportCard { position: fixed; left: -20000px; top: 0; width: 1080px; min-height: 1080px; padding: 68px 70px 54px; overflow: hidden; color: #f1f5f9; background: linear-gradient(155deg, #07101f 0%, #0d1a2f 52%, #07101d 100%); font-family: Outfit, Arial, sans-serif; }
+.exportGlow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(700px 520px at 12% 0%, rgba(0, 158, 227, .28), transparent 70%), radial-gradient(500px 500px at 100% 48%, rgba(56, 189, 248, .12), transparent 70%); }
+.exportHeader, .exportTitle, .exportTournament, .exportHero, .exportTable, .exportFooter { position: relative; }
+.exportHeader { display: flex; align-items: center; justify-content: space-between; }
+.exportBrand { display: flex; align-items: center; gap: 14px; font-size: 25px; font-weight: 900; letter-spacing: 3px; }
+.exportBrand svg { width: 36px; height: 36px; color: #38bdf8; }
+.exportBadge { padding: 10px 18px; border: 2px solid rgba(56, 189, 248, .28); border-radius: 999px; color: #7dd3fc; background: rgba(56, 189, 248, .08); font-size: 18px; font-weight: 900; letter-spacing: 2px; }
+.exportTitle { margin-top: 52px; font-size: 96px; font-weight: 900; line-height: .9; letter-spacing: -4px; color: #fff; }
+.exportTournament { margin-top: 14px; color: #8fa2bd; font-size: 32px; font-weight: 650; }
+.exportHero { margin: 40px 0 32px; padding: 34px 38px; display: flex; align-items: center; gap: 30px; border: 2px solid rgba(251, 191, 36, .25); border-radius: 30px; background: linear-gradient(120deg, rgba(251, 191, 36, .12), rgba(56, 189, 248, .07)); }
+.exportTrophy { flex: 0 0 96px; width: 96px; height: 96px; padding: 20px; border-radius: 26px; color: #fbbf24; background: rgba(251, 191, 36, .12); }
+.exportTrophy svg { width: 100%; height: 100%; }
+.exportEyebrow { color: #fbbf24; font-size: 20px; font-weight: 900; letter-spacing: 4px; }
+.exportWinner { margin-top: 4px; font-size: 50px; font-weight: 900; line-height: 1.05; }
+.exportWinnerPoints { margin-top: 8px; color: #7dd3fc; font-size: 25px; font-weight: 850; letter-spacing: 1px; }
+.exportTable { overflow: hidden; border: 2px solid rgba(148, 163, 184, .1); border-radius: 24px; background: rgba(2, 6, 16, .25); }
+.exportRow { min-height: 76px; padding: 14px 26px; display: grid; grid-template-columns: 88px minmax(0, 1fr) 130px 90px; align-items: center; gap: 16px; border-top: 2px solid rgba(148, 163, 184, .08); font-size: 28px; }
+.exportRow > :nth-child(3), .exportRow > :nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; }
+.exportTableHead { min-height: 54px; border-top: 0; color: #8fa2bd; background: rgba(148, 163, 184, .045); font-size: 17px; font-weight: 900; letter-spacing: 2px; }
+.exportWinnerRow { background: linear-gradient(90deg, rgba(251, 191, 36, .13), rgba(56, 189, 248, .06)); }
+.exportPosition { color: #8fa2bd; font-weight: 900; }
+.exportPlayer { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+.exportRow strong { color: #fbbf24; font-size: 32px; }
+.exportFooter { margin-top: 38px; padding-top: 26px; display: flex; justify-content: space-between; border-top: 2px solid rgba(148, 163, 184, .1); color: #8fa2bd; font-size: 20px; font-weight: 700; }
+.exportFooter span:first-child { color: #38bdf8; }
+
+@keyframes reveal { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .details { animation: none; } .chevron { transition: none; } }
+@media (max-width: 600px) {
+  .summary { min-height: 76px; padding: .75rem; grid-template-columns: 68px 26px minmax(0, 1fr) 22px; gap: .5rem; }
+  .points { grid-column: 3; justify-self: start; padding: .25rem .55rem; font-size: .72rem; }
+  .chevron { grid-column: 4; grid-row: 1 / span 2; }
+  .winner { align-self: end; font-size: .92rem; }
+  .fecha, .trophy { grid-row: 1 / span 2; }
+  .details { padding: 0 .75rem .75rem; }
+  .detailsHeader { align-items: flex-start; flex-direction: column; padding: .85rem 0; gap: .75rem; }
+  .exportAction { width: 100%; justify-content: space-between; }
+  .exportAction button { flex: 1; }
+  .tableRow { grid-template-columns: 36px minmax(0, 1fr) 50px 46px; padding: .5rem; gap: .35rem; font-size: .8rem; }
+  .winnerLabel { display: none; }
+}
