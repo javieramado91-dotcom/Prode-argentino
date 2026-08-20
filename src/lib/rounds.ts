@@ -7,6 +7,10 @@ export type RoundEvent = {
 export type StoredRound = {
   apiId: string
   round: string | null
+  // Se incluyen cuando vienen de `matches` para poder reconstruir también
+  // las fechas que no están dentro de la ventana reciente de ESPN.
+  date?: string | null
+  teams?: string[] | null
 }
 
 // Una fecha normal tiene muchos partidos. Un round con un solo partido suele
@@ -25,17 +29,35 @@ export function assignStableRounds(
   events: RoundEvent[],
   stored: StoredRound[] = []
 ): Map<string, string> {
-  const sorted = [...events].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  )
-
   const roundSizes = new Map<string, number>()
   const storedByEvent = new Map<string, string>()
+  const storedWithDetails = new Set<string>()
+  const allEvents = new Map<string, RoundEvent>()
+
   for (const row of stored) {
-    if (!row.round) continue
-    roundSizes.set(row.round, (roundSizes.get(row.round) || 0) + 1)
-    storedByEvent.set(row.apiId, row.round)
+    if (!row.apiId) continue
+    if (row.round) {
+      roundSizes.set(row.round, (roundSizes.get(row.round) || 0) + 1)
+      storedByEvent.set(row.apiId, row.round)
+    }
+
+    if (row.date && row.teams?.length === 2) {
+      allEvents.set(row.apiId, {
+        id: row.apiId,
+        date: row.date,
+        teams: row.teams,
+      })
+      storedWithDetails.add(row.apiId)
+    }
   }
+
+  // Los partidos actuales tienen prioridad porque ESPN puede haber cambiado
+  // su horario o sus equipos respecto de lo que estaba guardado.
+  for (const event of events) allEvents.set(event.id, event)
+
+  const sorted = [...allEvents.values()].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  )
 
   const established = (round: string) =>
     (roundSizes.get(round) || 0) >= ESTABLISHED_ROUND_MIN_MATCHES
@@ -74,9 +96,16 @@ export function assignStableRounds(
 
     for (const event of bucket.events) {
       const oldRound = storedByEvent.get(event.id)
-      // Si una ventana parcial mezclara dos fechas ya consolidadas, no movemos
-      // ninguna. Solo los partidos nuevos o de rondas huérfanas se corrigen.
-      result.set(event.id, oldRound && established(oldRound) ? oldRound : canonicalRound)
+      // Los registros con fecha y equipos permiten corregir datos que quedaron
+      // mal asignados en una sincronización anterior. Los casos legacy sin ese
+      // contexto conservan su ronda consolidada para no alterar la estabilidad
+      // que ya tenían.
+      result.set(
+        event.id,
+        oldRound && established(oldRound) && !storedWithDetails.has(event.id)
+          ? oldRound
+          : canonicalRound
+      )
     }
   }
 

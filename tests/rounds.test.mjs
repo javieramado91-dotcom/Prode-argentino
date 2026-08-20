@@ -52,3 +52,66 @@ test('una fecha nueva usa la fecha de su primer partido', () => {
   assert.equal(rounds.get('a'), '2026-08-14')
   assert.equal(rounds.get('b'), '2026-08-14')
 })
+
+test('usa el historial completo para no mezclar una fecha nueva con la anterior', () => {
+  const previous = [
+    event('p1', '2026-08-21T18:00:00Z', 'A', 'B'),
+    event('p2', '2026-08-21T20:00:00Z', 'C', 'D'),
+    event('p3', '2026-08-22T18:00:00Z', 'E', 'F'),
+    event('p4', '2026-08-22T20:00:00Z', 'G', 'H'),
+  ]
+  const next = [
+    event('n1', '2026-08-28T18:00:00Z', 'A', 'C'),
+    event('n2', '2026-08-28T20:00:00Z', 'B', 'D'),
+    event('n3', '2026-08-29T18:00:00Z', 'E', 'G'),
+    event('n4', '2026-08-29T20:00:00Z', 'F', 'H'),
+  ]
+
+  const rounds = assignStableRounds(
+    [previous[3], ...next],
+    previous.map((match) => ({
+      apiId: match.id,
+      round: '2026-08-21',
+      date: match.date,
+      teams: match.teams,
+    }))
+  )
+
+  assert.equal(rounds.get('p4'), '2026-08-21')
+  for (const match of next) assert.equal(rounds.get(match.id), '2026-08-28')
+})
+
+test('corrige partidos que habían quedado etiquetados en la fecha anterior', () => {
+  const previous = [
+    event('p1', '2026-08-21T18:00:00Z', 'A', 'B'),
+    event('p2', '2026-08-21T20:00:00Z', 'C', 'D'),
+    event('p3', '2026-08-22T18:00:00Z', 'E', 'F'),
+    event('p4', '2026-08-22T20:00:00Z', 'G', 'H'),
+  ]
+  const next = [
+    event('n1', '2026-08-28T18:00:00Z', 'A', 'C'),
+    event('n2', '2026-08-28T20:00:00Z', 'B', 'D'),
+    event('n3', '2026-08-29T18:00:00Z', 'E', 'G'),
+    event('n4', '2026-08-29T20:00:00Z', 'F', 'H'),
+  ]
+
+  const rounds = assignStableRounds(
+    next,
+    [
+      ...previous.map((match) => ({
+        apiId: match.id,
+        round: '2026-08-21',
+        date: match.date,
+        teams: match.teams,
+      })),
+      ...next.map((match, index) => ({
+        apiId: match.id,
+        round: index === 0 ? '2026-08-21' : '2026-08-28',
+        date: match.date,
+        teams: match.teams,
+      })),
+    ]
+  )
+
+  for (const match of next) assert.equal(rounds.get(match.id), '2026-08-28')
+})

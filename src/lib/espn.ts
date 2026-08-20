@@ -119,20 +119,24 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
   // fantasma ni renombrar las demás.
   const { data: existing } = await writer
     .from('matches')
-    .select('api_id, round')
+    .select('api_id, round, match_date, home_team, away_team')
 
   const rounds = assignStableRounds(
     events.map((event) => ({
       id: event.id,
       date: event.date,
-      teams: event.competitions[0].competitors.map(
-        (competitor) => competitor.team.id || competitor.team.displayName
-      ),
+      // Usamos los nombres porque son los equipos que persistimos en `matches`
+      // y así el historial completo puede servir de contexto para agrupar.
+      teams: event.competitions[0].competitors.map((competitor) => competitor.team.displayName),
     })),
-    (existing || []).map((match) => ({
-      apiId: String(match.api_id),
-      round: match.round,
-    }))
+    (existing || [])
+      .filter((match) => match.api_id != null)
+      .map((match) => ({
+        apiId: String(match.api_id),
+        round: match.round,
+        date: match.match_date,
+        teams: [match.home_team, match.away_team],
+      }))
   )
   const rows = events.map((e) => {
     const comp = e.competitions[0].competitors
