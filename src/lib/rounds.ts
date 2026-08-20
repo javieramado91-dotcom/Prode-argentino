@@ -79,6 +79,7 @@ export function assignStableRounds(
   }
 
   const result = new Map<string, string>()
+  const usedCanonicalRounds = new Set<string>()
   for (const bucket of buckets) {
     const votes = new Map<string, number>()
     for (const event of bucket.events) {
@@ -88,11 +89,22 @@ export function assignStableRounds(
       }
     }
 
-    const canonicalRound = [...votes.keys()].sort((a, b) =>
+    const votedRounds = [...votes.keys()].sort((a, b) =>
       (votes.get(b) || 0) - (votes.get(a) || 0) ||
       (roundSizes.get(b) || 0) - (roundSizes.get(a) || 0) ||
       a.localeCompare(b)
-    )[0] || bucket.minDate.slice(0, 10)
+    )
+    const dateRound = bucket.minDate.slice(0, 10)
+
+    // Una ronda vieja corrupta puede tener votos para dos buckets distintos.
+    // Si reutilizamos la misma clave, el front los vuelve a unir (por ejemplo,
+    // dos fechas de 15 partidos terminan mostrando 30 en una sola fecha).
+    // La primera aparición conserva la clave histórica y las siguientes usan
+    // la fecha real del primer partido de ese bucket.
+    const canonicalRound = [...votedRounds, dateRound].find(
+      (round) => round && !usedCanonicalRounds.has(round)
+    ) || dateRound
+    usedCanonicalRounds.add(canonicalRound)
 
     for (const event of bucket.events) {
       const oldRound = storedByEvent.get(event.id)

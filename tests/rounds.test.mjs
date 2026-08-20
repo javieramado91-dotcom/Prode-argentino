@@ -115,3 +115,30 @@ test('corrige partidos que habían quedado etiquetados en la fecha anterior', ()
 
   for (const match of next) assert.equal(rounds.get(match.id), '2026-08-28')
 })
+
+test('no reutiliza una clave histórica y fusiona dos fechas', () => {
+  const first = [
+    event('a1', '2026-08-28T18:00:00Z', 'A', 'B'),
+    event('a2', '2026-08-28T20:00:00Z', 'C', 'D'),
+  ]
+  const second = [
+    event('b1', '2026-09-06T18:00:00Z', 'A', 'C'),
+    event('b2', '2026-09-06T20:00:00Z', 'B', 'D'),
+  ]
+
+  const rounds = assignStableRounds(
+    [...first, ...second],
+    [...first, ...second].map((match) => ({
+      apiId: match.id,
+      // Simula dos fechas que quedaron guardadas con la misma clave.
+      round: '2026-08-28',
+      date: match.date,
+      teams: match.teams,
+    }))
+  )
+
+  assert.equal(rounds.get('a1'), '2026-08-28')
+  assert.equal(rounds.get('a2'), '2026-08-28')
+  assert.equal(rounds.get('b1'), '2026-09-06')
+  assert.equal(rounds.get('b2'), '2026-09-06')
+})
