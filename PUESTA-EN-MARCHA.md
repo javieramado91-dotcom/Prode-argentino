@@ -18,6 +18,41 @@ la clave pública (anon) no puedo modificar el esquema; hay que correr un SQL un
 Eso agrega las columnas faltantes, crea el alta automática de perfil al registrarse, el
 motor de puntos (6/3/0 estilo Mercado Pago), el ranking global y la seguridad (RLS).
 
+> **Fijate que diga *Success*.** Si el script corta por un error a mitad de camino, todo
+> lo que viene después **no se aplica** y la base queda en un estado mezclado que parece
+> correcto. Ya pasó una vez: la migración "se aplicó bien" y la seguridad seguía abierta.
+>
+> **Si además cambió el código**, el SQL va primero y el merge a `main` después. Al revés,
+> las funciones nuevas todavía no existen y el panel de admin rompe.
+
+### Comprobar que la seguridad quedó activa
+
+Que el SQL Editor diga "Success" no alcanza: las políticas de RLS se combinan con **OR**,
+así que una política vieja permisiva puede anular a las nuevas sin dar ningún error. Se
+verifica desde afuera, con la clave pública y **sin iniciar sesión**:
+
+```bash
+URL=https://<tu-proyecto>.supabase.co
+KEY=<la anon key de src/lib/supabase/config.ts>
+
+# Las 4 tienen que devolver []
+for t in predictions matches groups users; do
+  curl -s -H "apikey: $KEY" "$URL/rest/v1/$t?select=id&limit=1"; echo
+done
+
+# Y esto tiene que decir "permission denied for function"
+curl -s -X POST -H "apikey: $KEY" -H "Content-Type: application/json"      -d '{}' "$URL/rest/v1/rpc/get_leaderboard"
+```
+
+Si alguna devuelve filas, quedó una política permisiva de más (típicamente creada desde
+el panel de Supabase, con rol `public`). Listalas así y borrá las que tengan
+`roles = {public}` con condición `true`:
+
+```sql
+select tablename, policyname, cmd, roles::text, qual
+from pg_policies where schemaname = 'public' order by tablename;
+```
+
 3. **Registrate en la app** con tu email (`javieramado91@gmail.com`) desde `/login`.
 4. Volvé al SQL Editor y corré este comando para convertirte en admin aprobado
    (ya está incluido al final del script, pero solo tiene efecto **después** de que
@@ -43,7 +78,13 @@ los 15 partidos de la Fecha 1 (Belgrano-Central, Racing, River, Boca, etc.).
 
 - **Cómo se usa:** entrá a `/admin` → **Sincronizar Partidos**. Trae automáticamente la
   fecha vigente. Mientras haya partidos en curso, el dashboard se actualiza solo cada 30s.
-- **No hay que configurar nada.** La liga está en [`.env.local`](.env.local) como
+
+> **Ojo, ESPN no es oficial y cambia sin aviso.** El 2026-09-17 dejó de aceptar rangos
+> `dates=DESDE-HASTA` (devuelve 400 para cualquiera) y dejó el sync caído con "Error
+> interno" en el dashboard. Ahora se pide por mes (`dates=YYYYMM`). Si vuelve a fallar,
+> **probá los formatos de `dates` con curl antes de tocar el código**: el mensaje de error
+> señala el último tramo evaluado, no la causa.
+- **No hay que configurar nada.** La liga está en `.env.local` como
   `ESPN_LEAGUE_SLUG=arg.1` (Liga Profesional).
 
 > **Nota honesta:** la API de ESPN es pública pero no oficialmente documentada. Es ideal
@@ -67,6 +108,24 @@ los 15 partidos de la Fecha 1 (Belgrano-Central, Racing, River, Boca, etc.).
 | 8 | Sin actualización en vivo | `LiveRefresher` refresca cada 30s si hay partidos en curso |
 | 9 | `layout` decía "Create Next App", idioma inglés, fuente Geist pisaba Outfit | Metadata y `lang="es"` correctos, Outfit sin conflictos |
 | 10 | `/api/seed` borraba TODOS los partidos sin login | Ahora requiere admin |
+
+### Auditoría de seguridad (2026-09-17)
+
+Una revisión completa encontró que **la validación estaba solo en las Server Actions**,
+y la anon key está en el navegador: se salteaba escribiendo a PostgREST directo.
+
+| # | Problema | Solución |
+|---|----------|----------|
+| 11 | Cualquier registrado podía hacer `update users set is_admin = true` sobre su fila | GRANT por columna (solo `display_name`) + RPC `admin_approve_user` |
+| 12 | Se podía pronosticar con el partido ya jugado escribiendo a la tabla | `match_is_open()` en las políticas de INSERT y UPDATE |
+| 13 | `points_earned` era escribible y el ranking lo sumaba sin mirar el estado | Fuera del GRANT + los rankings cuentan solo partidos finalizados |
+| 14 | Se leían los pronósticos de todos sin iniciar sesión | Políticas heredadas del panel viejo borradas (sección 6m) |
+| 15 | "Salir" terminaba en un 405 | `redirect()` responde 307 y preserva el POST; ahora 303 |
+| 16 | Fechas y horas con 3 horas de desfasaje y parpadeo al cargar | Todo el formateo por `src/lib/fecha.ts`, fijado a hora argentina |
+| 17 | El sync quedó caído: ESPN dejó de aceptar rangos de fechas | Se pide por mes (`dates=YYYYMM`) |
+
+Las trampas de Postgres detrás de la 11 a la 14 están explicadas en
+**[AGENTS.md](AGENTS.md)** — valen para cualquier cambio futuro de permisos.
 
 ## Deploy en Vercel (conectado a GitHub)
 
