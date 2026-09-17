@@ -875,6 +875,42 @@ create policy notification_settings_own on public.notification_settings
 alter table public.notifications_log enable row level security;
 
 -- ---------------------------------------------------------------------------
+-- 6m) Limpieza de políticas heredadas
+--
+--     Las políticas de RLS son PERMISIVAS y se combinan con OR: alcanza con que
+--     UNA deje pasar. Este proyecto arrastraba políticas creadas desde el panel
+--     de Supabase, con el rol `public` (que incluye a los anónimos) y condición
+--     `true`. Convivían con las de acá y las anulaban:
+--
+--       - "Users can view all predictions."  → cualquiera, sin sesión, leía TODOS
+--         los pronósticos, incluso antes de que empezara el partido.
+--       - "Users can update their own predictions." → sin el chequeo de
+--         match_is_open, así que se podía pronosticar con el partido ya jugado
+--         aunque predictions_update_own lo prohibiera.
+--       - "Lectura general de perfiles" → cualquier usuario logueado leía la
+--         fila completa del resto, email incluido.
+--
+--     Para cada una hay una equivalente en `{authenticated}` más abajo, y las
+--     altas de grupos/miembros pasan por RPC SECURITY DEFINER, así que borrarlas
+--     no le saca nada a la app.
+-- ---------------------------------------------------------------------------
+
+drop policy if exists "Users can view all predictions."            on public.predictions;
+drop policy if exists "Users can update their own predictions."    on public.predictions;
+drop policy if exists "Users can insert their own predictions."    on public.predictions;
+
+drop policy if exists "Matches are viewable by everyone."          on public.matches;
+
+drop policy if exists "Anyone can view groups they are in (handled in app) or public i" on public.groups;
+drop policy if exists "Solo admins pueden crear grupos."           on public.groups;
+
+drop policy if exists "Group members are viewable by everyone."    on public.group_members;
+drop policy if exists "Users can join a group."                    on public.group_members;
+
+drop policy if exists "Lectura general de perfiles"                on public.users;
+drop policy if exists "Los usuarios pueden actualizar su propio perfil." on public.users;
+
+-- ---------------------------------------------------------------------------
 -- 7) Endurecimiento: privilegios por COLUMNA
 --
 --     RLS decide QUÉ FILAS puede tocar cada uno; no decide qué columnas. Para
@@ -909,6 +945,34 @@ begin
   execute 'revoke insert, update on public.predictions from authenticated';
   execute format('grant insert (%s) on public.predictions to authenticated', cols);
   execute format('grant update (%s) on public.predictions to authenticated', cols);
+end $$;
+
+-- El rol `anon` es "cualquiera con la anon key", y esa clave viaja en el bundle
+-- del navegador. No escribe nunca, y las RPC de lectura tampoco son para él
+-- (get_leaderboard le devolvía nombres y puntos de todos sin iniciar sesión).
+-- No se tocan los helpers de las políticas (is_admin, is_group_member,
+-- match_is_open): se evalúan para `authenticated`, no para anon.
+revoke insert, update, delete on
+  public.users, public.predictions, public.matches, public.groups, public.group_members
+  from anon;
+
+do $$
+declare f record;
+begin
+  for f in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    where p.pronamespace = 'public'::regnamespace
+      and p.proname in (
+        'get_leaderboard','get_round_scores','get_group_round_scores','get_user_stats',
+        'get_match_predictions','get_group_match_predictions','get_group_member_results',
+        'get_group_leaderboard','my_groups','search_users_for_group','create_group',
+        'join_group','add_user_to_group','renew_group','delete_group',
+        'admin_delete_user','admin_approve_user','recalculate_points'
+      )
+  loop
+    execute format('revoke execute on function %s from anon', f.sig);
+  end loop;
 end $$;
 
 -- ---------------------------------------------------------------------------
