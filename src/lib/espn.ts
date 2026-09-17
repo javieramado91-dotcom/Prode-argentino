@@ -3,6 +3,7 @@
 // /api/notify (cron), para no duplicarla.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { mensajeDeError } from './errores'
 import { assignStableRounds } from '@/lib/rounds'
 
 // El error puede venir de fetch (Error) o de PostgREST ({ message, code }).
@@ -111,7 +112,13 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
   try {
     events = await fetchWindow(now)
   } catch (error) {
-    return { ok: false, phase: 'espn', error }
+    // Lo que cae acá es `unknown`: lo normalizamos a Error para que la ruta
+    // pueda leerle el `.message` sin castear.
+    return {
+      ok: false,
+      phase: 'espn',
+      error: error instanceof Error ? error : new Error(mensajeDeError(error)),
+    }
   }
   if (events.length === 0) {
     return { ok: false, phase: 'espn', empty: true, error: new Error('ESPN no devolvió partidos.') }

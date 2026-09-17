@@ -13,7 +13,7 @@ import type { RoundScore } from '@/lib/awards'
 
 // Las columnas que pide esta página de `matches`, y las filas por fecha que
 // devuelve get_group_round_scores.
-type PartidoDeTorneo = Omit<MatchRow, 'api_id' | 'featured'>
+type PartidoDeTorneo = Omit<MatchRow, 'api_id' | 'featured' | 'status_detail'>
 type FilaDeFecha = RoundScore
 
 export const dynamic = 'force-dynamic'
