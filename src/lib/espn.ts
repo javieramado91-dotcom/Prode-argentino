@@ -5,6 +5,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { mensajeDeError } from './errores'
 import { assignStableRounds } from '@/lib/rounds'
+import { windowMonths } from './espn-window'
 
 // El error puede venir de fetch (Error) o de PostgREST ({ message, code }).
 export type SyncError = { message: string; code?: string }
@@ -12,16 +13,16 @@ export type SyncError = { message: string; code?: string }
 // Fuente: API pública de ESPN (gratis, temporada actual, en vivo).
 const ESPN_LEAGUE = process.env.ESPN_LEAGUE_SLUG || 'arg.1'
 
-// Ventana a sincronizar: partidos recientes + en curso + próximas fechas.
-const DAYS_BACK = 10
-const DAYS_AHEAD = 28
 
 // ESPN devuelve como MÁXIMO 100 eventos por consulta y trunca el final sin
-// avisar. La ventana completa (38 días ≈ 105 partidos) ya tocaba ese tope: la
-// última fecha llegaba incompleta (10 de 15 partidos). Por eso la pedimos en
-// tramos y unimos los resultados. Con ~19 días por tramo son ≈3 fechas
-// (≈45-60 partidos), bien lejos del tope.
-const CHUNK_DAYS = 19
+// avisar. La ventana completa ya tocaba ese tope y la última fecha llegaba
+// incompleta, así que la pedimos partida y unimos los resultados.
+//
+// Se pide por MES (`dates=YYYYMM`), no por rango de días. ESPN dejó de aceptar
+// `dates=DESDE-HASTA`: desde 2026-09-17 devuelve 400 para CUALQUIER rango, hasta
+// para uno de dos días. Verificado a mano contra la API; era lo que tenía el
+// sync caído en producción ("Error interno" en el dashboard). La forma por mes
+// trae ≈45-60 partidos, bien lejos del tope, y son 2-3 pedidos igual que antes.
 const ESPN_MAX_EVENTS = 100
 
 type EspnCompetitor = {
@@ -55,20 +56,6 @@ function toScore(c: EspnCompetitor): number | null {
   const n = parseInt(c?.score ?? '', 10)
   return Number.isFinite(n) ? n : null
 }
-function ymd(d: Date): string {
-  return d.toISOString().slice(0, 10).replace(/-/g, '')
-}
-// Parte la ventana en tramos consecutivos (sin huecos ni superposición).
-function windowRanges(now: Date): [string, string][] {
-  const startMs = now.getTime() - DAYS_BACK * 86400000
-  const endMs = now.getTime() + DAYS_AHEAD * 86400000
-  const ranges: [string, string][] = []
-  for (let s = startMs; s <= endMs; s += CHUNK_DAYS * 86400000) {
-    const e = Math.min(s + (CHUNK_DAYS - 1) * 86400000, endMs)
-    ranges.push([ymd(new Date(s)), ymd(new Date(e))])
-  }
-  return ranges
-}
 
 // Trae toda la ventana pidiéndola por tramos (en paralelo) y uniendo por id.
 // Si FALLA algún tramo lanza: preferimos abortar la sincronización antes que
@@ -76,23 +63,23 @@ function windowRanges(now: Date): [string, string][] {
 // los partidos presentes y con un hueco podría numerarlas mal.
 async function fetchWindow(now: Date): Promise<EspnEvent[]> {
   const chunks = await Promise.all(
-    windowRanges(now).map(async ([from, to]) => {
-      const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${ESPN_LEAGUE}/scoreboard?dates=${from}-${to}`
+    windowMonths(now).map(async (mes) => {
+      const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${ESPN_LEAGUE}/scoreboard?dates=${mes}`
       const res = await fetch(url, { cache: 'no-store' })
-      if (!res.ok) throw new Error(`ESPN respondió ${res.status} (tramo ${from}-${to})`)
+      if (!res.ok) throw new Error(`ESPN respondió ${res.status} (mes ${mes})`)
       const data = await res.json()
       const events: EspnEvent[] = data.events || []
-      // Red de alerta: si un tramo llega al tope, ESPN pudo haberlo cortado.
+      // Red de alerta: si un mes llega al tope, ESPN pudo haberlo cortado.
       if (events.length >= ESPN_MAX_EVENTS) {
         console.error(
-          `sync ESPN: el tramo ${from}-${to} devolvió ${events.length} eventos (tope ${ESPN_MAX_EVENTS}): puede venir truncado, achicar CHUNK_DAYS.`
+          `sync ESPN: el mes ${mes} devolvió ${events.length} eventos (tope ${ESPN_MAX_EVENTS}): puede venir truncado.`
         )
       }
       return events
     })
   )
 
-  // Unimos deduplicando por id (los tramos no se superponen, pero por las dudas).
+  // Unimos deduplicando por id (los meses no se superponen, pero por las dudas).
   const byId = new Map<string, EspnEvent>()
   for (const events of chunks) for (const e of events) byId.set(e.id, e)
   return [...byId.values()]
