@@ -956,6 +956,11 @@ revoke insert, update, delete on
   public.users, public.predictions, public.matches, public.groups, public.group_members
   from anon;
 
+-- OJO con el REVOKE de acá abajo: se le saca a PUBLIC, no a `anon`.
+-- Postgres le otorga EXECUTE a PUBLIC por defecto en cada función que se crea,
+-- así que un `revoke ... from anon` no hace nada: el permiso le sigue llegando
+-- por PUBLIC. Hay que revocárselo a PUBLIC y devolvérselo a los roles que sí
+-- tienen que poder llamarlas.
 do $$
 declare f record;
 begin
@@ -971,7 +976,9 @@ begin
         'admin_delete_user','admin_approve_user','recalculate_points'
       )
   loop
+    execute format('revoke execute on function %s from public', f.sig);
     execute format('revoke execute on function %s from anon', f.sig);
+    execute format('grant execute on function %s to authenticated, service_role', f.sig);
   end loop;
 end $$;
 
