@@ -4,16 +4,17 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { notifyAdminNewUser } from '@/lib/notify'
+import { mensajeDeError, detallesDeError } from '@/lib/errores'
 
 // Limpia cualquier error técnico de Supabase antes de mostrarlo al usuario.
-function sanitizeError(err: any, fallback: string): string {
-  let msg = ''
-  if (typeof err === 'string') msg = err
-  else if (err && typeof err.message === 'string') msg = err.message
+function sanitizeError(err: unknown, fallback: string): string {
+  const msg = mensajeDeError(err, '')
   if (!msg || msg === '[]' || msg === '{}' || msg === '[object Object]' || msg.trim() === '') {
     return fallback
   }
-  if (err?.status === 500 || err?.__isAuthError) return fallback
+  const { status } = detallesDeError(err)
+  const esAuthError = !!(err && typeof err === 'object' && '__isAuthError' in err)
+  if (status === 500 || esAuthError) return fallback
   return msg
 }
 
@@ -93,18 +94,17 @@ export async function resetPasswordAction(email: string) {
 
   const redirectTo = `${siteUrl}/reset`
 
-  let result: any = null
+  let result: Awaited<ReturnType<typeof supabase.auth.resetPasswordForEmail>>
   try {
     result = await supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo })
-  } catch (e: any) {
+  } catch {
     return { error: 'No se pudo conectar con el servidor de autenticación. Intentá nuevamente.' }
   }
 
   const { error } = result
 
   if (error) {
-    const status = (error as any)?.status
-    const raw = typeof (error as any)?.message === 'string' ? (error as any).message : ''
+    const { status, message: raw } = detallesDeError(error)
 
     if (status === 429 || raw.toLowerCase().includes('rate limit') || raw.toLowerCase().includes('email rate')) {
       return { error: 'Demasiados intentos. Esperá unos minutos antes de solicitar otro correo.' }

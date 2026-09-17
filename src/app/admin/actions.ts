@@ -23,14 +23,14 @@ export async function approveUser(formData: FormData) {
   const supabase = await requireAdmin();
   const userId = formData.get('userId') as string;
 
-  const { data: updated, error } = await supabase
-    .from('users')
-    .update({ is_approved: true })
-    .eq('id', userId)
-    .select('email, display_name')
-    .single();
+  // Pasa por la RPC (SECURITY DEFINER) en vez de un UPDATE directo: la tabla
+  // `users` ya no acepta escrituras de `is_approved` desde una sesión normal,
+  // porque eso era también la puerta para auto-asignarse `is_admin`.
+  const { data, error } = await supabase.rpc('admin_approve_user', { uid: userId });
 
   if (error) throw new Error(error.message);
+
+  const updated = data?.[0];
 
   // Avisar al usuario por email que ya puede ingresar. Si el envío falla o el
   // mailer no está configurado, NO rompemos la aprobación (ya quedó aprobado).
@@ -66,8 +66,12 @@ export async function toggleFeatured(formData: FormData) {
     .single();
   if (!match) throw new Error('Partido no encontrado');
 
-  // Desmarca todos los de la misma ronda.
-  await supabase.from('matches').update({ featured: false }).eq('round', match.round);
+  // Desmarca todos los de la misma ronda. Con `round` nulo, `.eq('round', null)`
+  // no filtra lo que uno espera en PostgREST: usamos `.is()` para ese caso.
+  const sameRound = supabase.from('matches').update({ featured: false });
+  await (match.round === null
+    ? sameRound.is('round', null)
+    : sameRound.eq('round', match.round));
 
   // Si no estaba destacado, lo destaca (si ya lo estaba, queda desmarcado).
   if (!match.featured) {

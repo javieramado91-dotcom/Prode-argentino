@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { PREDICTABLE_ROUNDS } from '@/lib/prode';
+import type { MatchRow } from '@/lib/db-types';
 
 export async function savePrediction(matchId: string, homeScore: number, awayScore: number) {
   const supabase = await createClient();
@@ -42,7 +43,15 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
     .order('match_date', { ascending: true });
 
   const window = new Set(
-    Array.from(new Set((pendingRounds || []).map((r: any) => r.round))).sort().slice(0, PREDICTABLE_ROUNDS)
+    Array.from(
+      new Set(
+        ((pendingRounds || []) as Pick<MatchRow, 'round' | 'match_date'>[])
+          .map((r) => r.round)
+          .filter((r): r is string => !!r)
+      )
+    )
+      .sort()
+      .slice(0, PREDICTABLE_ROUNDS)
   );
   if (match.round && !window.has(match.round)) {
     throw new Error('Ese partido todavía no está habilitado: se puede predecir la fecha actual y las 2 siguientes.');

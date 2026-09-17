@@ -63,9 +63,27 @@ export default function ResetPage() {
         return;
       }
 
-      // Flujo alternativo por hash (#access_token / #type=recovery)
+      // Flujo alternativo por hash (#access_token / #type=recovery).
+      // Con detectSessionInUrl desactivado nadie parsea ese hash por nosotros,
+      // así que hay que crear la sesión a mano. Antes esto solo hacía
+      // setReady(true) y el formulario se mostraba SIN sesión: el usuario
+      // escribía la contraseña nueva y updateUser fallaba con "Auth session
+      // missing" recién al apretar Guardar.
       if (hasHashToken) {
-        setReady(true);
+        const h = new URLSearchParams(hash.replace(/^#/, ''));
+        const access_token = h.get('access_token');
+        const refresh_token = h.get('refresh_token');
+        if (!access_token || !refresh_token) {
+          setFatal('El enlace está incompleto o ya se usó. Pedí uno nuevo desde "¿Olvidaste tu contraseña?".');
+          return;
+        }
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (!active) return;
+        if (error) {
+          setFatal('No se pudo validar el enlace. Suele pasar si ya venció. Pedí uno nuevo y abrilo apenas te llegue.');
+        } else {
+          setReady(true);
+        }
         return;
       }
 

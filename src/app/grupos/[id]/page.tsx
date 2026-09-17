@@ -8,6 +8,13 @@ import TournamentRanking from '@/components/TournamentRanking/TournamentRanking'
 import RenewTournament from '@/components/RenewTournament/RenewTournament'
 import DeleteTournament from '@/components/DeleteTournament/DeleteTournament'
 import TopNav from '@/components/TopNav/TopNav'
+import type { MatchRow } from '@/lib/db-types'
+import type { RoundScore } from '@/lib/awards'
+
+// Las columnas que pide esta página de `matches`, y las filas por fecha que
+// devuelve get_group_round_scores.
+type PartidoDeTorneo = Omit<MatchRow, 'api_id' | 'featured'>
+type FilaDeFecha = RoundScore
 
 export const dynamic = 'force-dynamic'
 
@@ -38,9 +45,9 @@ export default async function GrupoDetallePage(props: {
     .from('matches')
     .select('id, home_team, away_team, home_logo, away_logo, match_date, status, home_score, away_score, round')
     .order('match_date', { ascending: true })
-  const matchesList = allMatches || []
+  const matchesList: PartidoDeTorneo[] = allMatches || []
   const roundOrder = Array.from(
-    new Set(matchesList.map((m: any) => m.round as string).filter(Boolean))
+    new Set(matchesList.map((m) => m.round).filter((r): r is string => !!r))
   ).sort()
 
   // Número de la fecha de arranque (posición cronológica entre todas las fechas).
@@ -53,7 +60,7 @@ export default async function GrupoDetallePage(props: {
   // Estado del torneo argentino / del torneo de amigos.
   // "Terminó" = no quedan partidos sin finalizar (ESPN no da un flag de fin).
   const maxRound = roundOrder[roundOrder.length - 1] || null
-  const tournamentEnded = matchesList.length > 0 && matchesList.every((m: any) => m.status === 'finished')
+  const tournamentEnded = matchesList.length > 0 && matchesList.every((m) => m.status === 'finished')
   const groupStarted = !group.start_round || (maxRound !== null && group.start_round <= maxRound)
   const finalized = tournamentEnded && groupStarted
   const waiting = tournamentEnded && !groupStarted
@@ -68,15 +75,19 @@ export default async function GrupoDetallePage(props: {
 
   // Fechas EN JUEGO: empezadas (algún partido ya arrancó) y no cerradas (algún
   // partido sin terminar). Por los postergados puede haber más de una a la vez.
+  // Server Component dinámico:
+  // la hora actual es un dato de entrada legítimo. Se lee UNA sola vez y se
+  // reutiliza, que es lo que la regla busca evitar (varias lecturas divergentes).
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now()
   const roundNum = new Map(roundOrder.map((r, i) => [r, i + 1]))
-  const byRound = new Map<string, any[]>()
+  const byRound = new Map<string, PartidoDeTorneo[]>()
   for (const m of matchesList) {
     if (!m.round) continue
     if (!byRound.has(m.round)) byRound.set(m.round, [])
     byRound.get(m.round)!.push(m)
   }
-  const scoresList = (roundScores || []) as any[]
+  const scoresList: FilaDeFecha[] = roundScores || []
   const activeFechas = [...byRound.entries()]
     .filter(([, ms]) => {
       const started = ms.some((m) => m.status !== 'pending' || new Date(m.match_date).getTime() <= now)
@@ -90,22 +101,22 @@ export default async function GrupoDetallePage(props: {
       standings: scoresList
         .filter((s) => s.round === round)
         .map((s) => ({
-          name: s.display_name as string,
+          name: s.display_name,
           points: Number(s.points),
           exacts: Number(s.exacts ?? 0),
         }))
         // Desempate: a igual puntaje, primero el que tiene más exactos EN ESA FECHA.
         .sort((a, b) => b.points - a.points || b.exacts - a.exacts || a.name.localeCompare(b.name)),
       matches: ms.map((m) => ({
-        id: m.id as string,
-        home: m.home_team as string,
-        away: m.away_team as string,
-        homeLogo: m.home_logo as string | null,
-        awayLogo: m.away_logo as string | null,
-        date: m.match_date as string,
-        status: m.status as 'pending' | 'in_progress' | 'finished',
-        homeScore: m.home_score as number | null,
-        awayScore: m.away_score as number | null,
+        id: m.id,
+        home: m.home_team,
+        away: m.away_team,
+        homeLogo: m.home_logo,
+        awayLogo: m.away_logo,
+        date: m.match_date,
+        status: m.status,
+        homeScore: m.home_score,
+        awayScore: m.away_score,
       })),
     }))
 

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import styles from './page.module.css';
 import Logo, { LogoMark } from '@/components/Logo/Logo';
 
 export default function Home() {

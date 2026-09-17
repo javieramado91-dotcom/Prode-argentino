@@ -14,6 +14,7 @@ export type FechaWinner = {
   round: string
   fecha: number | null
   winners: string[] // nombres (puede haber empate)
+  winnerIds: string[] // mismos ganadores, por id: dos personas pueden llamarse igual
   points: number
   standings: FechaStanding[]
 }
@@ -66,8 +67,15 @@ export function computeFechaWinners(scores: RoundScore[], roundOrder: string[]):
     // exactos clavó EN ESA FECHA. Si también empatan en exactos, comparten.
     const tied = standings.filter((r) => r.points === max)
     const maxExacts = Math.max(...tied.map((r) => r.exacts))
-    const winners = tied.filter((r) => r.exacts === maxExacts).map((r) => r.name)
-    out.push({ round, fecha: nums.get(round) ?? null, winners, points: max, standings })
+    const ganadores = tied.filter((r) => r.exacts === maxExacts)
+    out.push({
+      round,
+      fecha: nums.get(round) ?? null,
+      winners: ganadores.map((r) => r.name),
+      winnerIds: ganadores.map((r) => r.userId),
+      points: max,
+      standings,
+    })
   }
   // Más recientes primero.
   out.sort((a, b) => (b.fecha ?? 0) - (a.fecha ?? 0) || b.round.localeCompare(a.round))
@@ -90,11 +98,15 @@ export function computeAwards(scores: RoundScore[], fechaWinners: FechaWinner[])
   }
 
   // 👑 Rey de las fechas: más fechas ganadas.
+  // Se cuenta por user_id, no por nombre: dos jugadores homónimos compartían el
+  // premio (y sumaban sus fechas en una sola cuenta).
   const wins = new Map<string, number>()
   for (const fw of fechaWinners) {
-    for (const name of fw.winners) wins.set(name, (wins.get(name) || 0) + 1)
+    for (const id of fw.winnerIds) wins.set(id, (wins.get(id) || 0) + 1)
   }
-  const rey = topBy([...wins.entries()].map(([name, n]) => ({ name, value: n })))
+  const rey = topBy(
+    [...wins.entries()].map(([id, n]) => ({ name: byUser.get(id)?.name ?? '—', value: n }))
+  )
 
   // 🎯 Francotirador: más resultados exactos.
   const franco = topBy(

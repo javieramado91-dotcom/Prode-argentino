@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import TopNav from '@/components/TopNav/TopNav'
 import { createGroupAction, joinGroupAction } from './actions'
+import { diaMes } from '@/lib/fecha'
+import type { MatchRow } from '@/lib/db-types'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,14 +31,25 @@ export default async function GruposPage(props: {
     .select('round, match_date, status')
     .order('match_date', { ascending: true })
 
-  const allRounds = Array.from(new Set((matchRows || []).map((m: any) => m.round as string))).sort()
+  // `filter(Boolean)` es importante: sin él, un partido con `round` nulo entra
+  // como una "fecha" más y corre la numeración respecto de /grupos/[id], que sí
+  // lo filtra. Las dos pantallas tienen que numerar las fechas igual.
+  const filas: Pick<MatchRow, 'round' | 'match_date' | 'status'>[] = matchRows || []
+  const allRounds = Array.from(
+    new Set(filas.map((m) => m.round).filter((r): r is string => !!r))
+  ).sort()
   const fechaNumber = new Map(allRounds.map((r, i) => [r, i + 1]))
   // Se puede arrancar desde cualquier fecha que todavía tenga partidos por jugar.
+  // Server Component dinámico:
+  // la hora actual es un dato de entrada legítimo. Se lee UNA sola vez y se
+  // reutiliza, que es lo que la regla busca evitar (varias lecturas divergentes).
+  // eslint-disable-next-line react-hooks/purity
+  const ahora = Date.now()
   const startOptions = allRounds
-    .filter((r) => (matchRows || []).some((m: any) => m.round === r && m.status === 'pending' && new Date(m.match_date).getTime() > Date.now()))
+    .filter((r) => filas.some((m) => m.round === r && m.status === 'pending' && new Date(m.match_date).getTime() > ahora))
     .map((r) => {
-      const first = (matchRows || []).find((m: any) => m.round === r)
-      const label = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(new Date(first!.match_date))
+      const first = filas.find((m) => m.round === r)
+      const label = diaMes(first!.match_date)
       return { value: r, label: `Fecha ${fechaNumber.get(r)} (desde el ${label})` }
     })
 

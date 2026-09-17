@@ -9,6 +9,7 @@ import NotificationBanner from '@/components/NotificationBanner/NotificationBann
 import { LogoMark } from '@/components/Logo/Logo'
 import { PREDICTABLE_ROUNDS } from '@/lib/prode'
 import { VAPID_PUBLIC_KEY } from '@/lib/push/keys'
+import type { MatchRow, PredictionRow } from '@/lib/db-types'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,19 +55,26 @@ export default async function DashboardPage() {
 
   // Puntos por fecha (para "Ganador de la fecha" y premios de la temporada).
   const { data: roundScores } = await supabase.rpc('get_round_scores')
+  const partidos: MatchRow[] = dbMatches || []
+  const pronosticos: PredictionRow[] = predictions || []
   const roundOrder = Array.from(
-    new Set((dbMatches || []).map((m: any) => m.round as string).filter(Boolean))
+    new Set(partidos.map((m) => m.round).filter((r): r is string => !!r))
   ).sort()
   const myPoints = board.find((r) => r.user_id === user.id)?.points ?? 0
   const myPosition = board.findIndex((r) => r.user_id === user.id) + 1
 
   // Ventana de predicción: las próximas PREDICTABLE_ROUNDS fechas (por su round).
+  // Server Component dinámico:
+  // la hora actual es un dato de entrada legítimo. Se lee UNA sola vez y se
+  // reutiliza, que es lo que la regla busca evitar (varias lecturas divergentes).
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now()
   const upcomingRounds = Array.from(
     new Set(
-      (dbMatches || [])
-        .filter((m: any) => m.status === 'pending' && new Date(m.match_date).getTime() > now)
-        .map((m: any) => m.round as string)
+      partidos
+        .filter((m) => m.status === 'pending' && new Date(m.match_date).getTime() > now)
+        .map((m) => m.round)
+        .filter((r): r is string => !!r)
     )
   )
     .sort()
@@ -76,36 +84,36 @@ export default async function DashboardPage() {
   // Fechas con TODOS sus partidos finalizados (fecha cerrada). Los pronósticos
   // de los rivales solo se ven mientras la fecha NO esté cerrada.
   const roundAllFinished = new Map<string, boolean>()
-  for (const m of dbMatches || []) {
-    const r = m.round as string
+  for (const m of partidos) {
+    const r = m.round
     if (!r) continue
     if (!roundAllFinished.has(r)) roundAllFinished.set(r, true)
     if (m.status !== 'finished') roundAllFinished.set(r, false)
   }
 
-  const realMatches: MatchProps[] = (dbMatches || []).map((m: any) => {
-    const pred = predictions?.find((p: any) => p.match_id === m.id)
+  const realMatches: MatchProps[] = partidos.map((m) => {
+    const pred = pronosticos.find((p) => p.match_id === m.id)
     const isFuturePending = m.status === 'pending' && new Date(m.match_date).getTime() > now
     return {
       id: m.id,
       homeTeam: m.home_team,
       awayTeam: m.away_team,
-      homeLogo: m.home_logo,
-      awayLogo: m.away_logo,
+      homeLogo: m.home_logo ?? undefined,
+      awayLogo: m.away_logo ?? undefined,
       matchDate: m.match_date,
       status: m.status,
       statusDetail: m.status_detail,
-      homeScore: m.home_score,
-      awayScore: m.away_score,
+      homeScore: m.home_score ?? undefined,
+      awayScore: m.away_score ?? undefined,
       featured: m.featured,
-      round: m.round,
-      predictable: isFuturePending && predictableRounds.has(m.round),
+      round: m.round ?? undefined,
+      predictable: isFuturePending && !!m.round && predictableRounds.has(m.round),
       fechaOpen: m.round ? roundAllFinished.get(m.round) === false : false,
       userPrediction: pred
         ? {
             home: pred.predicted_home_score,
             away: pred.predicted_away_score,
-            pointsEarned: pred.points_earned,
+            pointsEarned: pred.points_earned ?? undefined,
           }
         : undefined,
     }

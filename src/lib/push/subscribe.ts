@@ -12,6 +12,15 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return out
 }
 
+// ¿Estamos en un iPhone/iPad? En iOS el push solo funciona con la app
+// instalada en la pantalla de inicio, así que la UI lo avisa.
+// (`MSStream` descarta IE11 en Windows Phone, que también decía "iPhone".)
+export function esIOS(): boolean {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false
+  const conMSStream = window as Window & { MSStream?: unknown }
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !conMSStream.MSStream
+}
+
 export function pushSupported(): boolean {
   return (
     typeof navigator !== 'undefined' &&

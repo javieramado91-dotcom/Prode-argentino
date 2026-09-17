@@ -6,6 +6,7 @@ import Leaderboard from '../Leaderboard/Leaderboard';
 import SeasonAwards from '../SeasonAwards/SeasonAwards';
 import styles from './DashboardSections.module.css';
 import type { RoundScore } from '@/lib/awards';
+import { diaAR, diaMes } from '@/lib/fecha';
 
 type UserScore = { id: string; name: string; points: number };
 
@@ -31,9 +32,10 @@ function dateRange(matches: MatchProps[]): string {
     .sort((a, b) => a.getTime() - b.getTime());
   const min = dates[0];
   const max = dates[dates.length - 1];
-  const fmt = (d: Date) =>
-    new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(d);
-  return min.toDateString() === max.toDateString() ? fmt(min) : `${fmt(min)} al ${fmt(max)}`;
+  // La comparación también va en hora argentina: `toDateString()` usa la zona
+  // del proceso, así que en el servidor (UTC) partía en dos una fecha que para
+  // un argentino cae toda el mismo día.
+  return diaAR(min) === diaAR(max) ? diaMes(min) : `${diaMes(min)} al ${diaMes(max)}`;
 }
 
 function Groups({

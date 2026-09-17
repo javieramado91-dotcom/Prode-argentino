@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { pushSupported, getExistingSubscription, enablePush } from '@/lib/push/subscribe'
+import { esIOS } from '@/lib/push/subscribe'
 
 const DISMISS_KEY = 'prode-notif-banner-dismissed'
 
@@ -20,8 +21,11 @@ export default function NotificationBanner({ vapidPublicKey }: { vapidPublicKey:
     if (localStorage.getItem(DISMISS_KEY)) return
     if (Notification.permission === 'denied') return
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+    const isIOS = esIOS()
     const standalone = window.matchMedia('(display-mode: standalone)').matches
+    // detección de
+    // plataforma: depende de navigator/matchMedia, que solo existen en el cliente.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIosHint(isIOS && !standalone)
 
     getExistingSubscription()

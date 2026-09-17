@@ -7,6 +7,17 @@ import { sendMail } from './mailer'
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'javieramado91@gmail.com'
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://prode-argentino.vercel.app'
 
+// El nombre y el email los elige el usuario al registrarse, así que no pueden
+// entrar crudos en el HTML del mail: se escapan antes de interpolarlos.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // Aviso al ADMIN de que hay una nueva solicitud de registro para aprobar.
 export async function notifyAdminNewUser(newUserEmail: string) {
   await sendMail({
@@ -16,7 +27,7 @@ export async function notifyAdminNewUser(newUserEmail: string) {
       <div style="font-family:sans-serif;max-width:480px;margin:auto">
         <h2 style="color:#009ee3">Nueva solicitud de registro</h2>
         <p>Un nuevo usuario se registró en el Prode Argentino y está esperando tu aprobación:</p>
-        <p style="font-size:18px;font-weight:bold">${newUserEmail}</p>
+        <p style="font-size:18px;font-weight:bold">${escapeHtml(newUserEmail)}</p>
         <p>
           <a href="${APP_URL}/admin"
              style="display:inline-block;background:#009ee3;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold">
@@ -31,7 +42,7 @@ export async function notifyAdminNewUser(newUserEmail: string) {
 
 // Aviso al USUARIO de que su cuenta fue aprobada y ya puede ingresar.
 export async function notifyUserApproved(userEmail: string, displayName?: string | null) {
-  const name = displayName?.trim() || 'crack'
+  const name = escapeHtml(displayName?.trim() || 'crack')
   await sendMail({
     to: userEmail,
     subject: '✅ ¡Tu cuenta del Prode fue aprobada!',

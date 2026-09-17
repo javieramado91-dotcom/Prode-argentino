@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { searchUsersForGroup, addUserToGroup, type UserMatch } from '@/app/grupos/actions'
+import { mensajeDeError } from '@/lib/errores'
 
 // Buscador que suma gente al torneo por nombre (sin código de invitación).
 export default function AddMemberByName({ groupId }: { groupId: string }) {
@@ -15,6 +16,12 @@ export default function AddMemberByName({ groupId }: { groupId: string }) {
   const seq = useRef(0)
 
   // Búsqueda con debounce a medida que escribís.
+  //
+  // El efecto sincroniza el input con una búsqueda en el servidor: el
+  // "Buscando…" tiene que aparecer apenas tipeás (antes de que se cumpla el
+  // debounce de 300 ms) y los resultados viejos tienen que limpiarse enseguida
+  // al borrar el texto. Las dos cosas son setState inmediatos por diseño.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const q = query.trim()
     if (q.length < 2) {
@@ -36,6 +43,7 @@ export default function AddMemberByName({ groupId }: { groupId: string }) {
     }, 300)
     return () => clearTimeout(t)
   }, [query, groupId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const flash = (m: string) => {
     setMsg(m)
@@ -49,8 +57,8 @@ export default function AddMemberByName({ groupId }: { groupId: string }) {
       setResults((prev) => prev.filter((x) => x.id !== u.id))
       flash(`✅ ${u.display_name} se sumó al torneo`)
       router.refresh()
-    } catch (e: any) {
-      flash(e?.message || 'No se pudo agregar.')
+    } catch (e) {
+      flash(mensajeDeError(e, 'No se pudo agregar.'))
     } finally {
       setAddingId(null)
     }
