@@ -4,6 +4,7 @@ import { useRef, useState, forwardRef } from 'react'
 import html2canvas from 'html2canvas'
 import lb from '../Leaderboard/Leaderboard.module.css'
 import { getGroupMemberResults, type MemberResult } from '@/app/grupos/actions'
+import { diaAR } from '@/lib/fecha'
 
 type Member = { id: string; name: string; points: number }
 
@@ -62,7 +63,7 @@ export default function TournamentRanking({
       const image = canvas.toDataURL('image/jpeg', 0.92)
       const link = document.createElement('a')
       link.href = image
-      link.download = `prode-ranking-${new Date().toISOString().slice(0, 10)}.jpg`
+      link.download = `prode-ranking-${diaAR(new Date())}.jpg`
       link.click()
     } catch (e) {
       console.error(e)

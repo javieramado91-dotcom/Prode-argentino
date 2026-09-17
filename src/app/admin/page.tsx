@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import AutoSync from '@/components/AutoSync/AutoSync'
 import TopNav from '@/components/TopNav/TopNav'
 import AdminTabs from './AdminTabs'
+import type { MatchRow, UserRow } from '@/lib/db-types'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,8 +27,9 @@ export default async function AdminPage() {
     .select('*')
     .order('created_at', { ascending: false })
 
-  const pending = (usersList || []).filter((u: any) => !u.is_approved && !u.is_admin)
-  const approved = (usersList || []).filter((u: any) => u.is_approved || u.is_admin)
+  const lista: UserRow[] = usersList || []
+  const pending = lista.filter((u) => !u.is_approved && !u.is_admin)
+  const approved = lista.filter((u) => u.is_approved || u.is_admin)
 
   // Solo los partidos de la PRÓXIMA fecha (para elegir el "Partido de la Fecha").
   const { data: allMatches } = await supabase
@@ -35,12 +37,19 @@ export default async function AdminPage() {
     .select('id, home_team, away_team, match_date, featured, status, round')
     .order('match_date', { ascending: true })
 
-  const nextRound = allMatches?.find(
-    (m: any) => m.status === 'pending' && new Date(m.match_date).getTime() > Date.now()
+  const partidos: Pick<MatchRow, 'id' | 'home_team' | 'away_team' | 'match_date' | 'featured' | 'status' | 'round'>[] =
+    allMatches || []
+  // Server Component dinámico:
+  // la hora actual es un dato de entrada legítimo. Se lee UNA sola vez y se
+  // reutiliza, que es lo que la regla busca evitar (varias lecturas divergentes).
+  // eslint-disable-next-line react-hooks/purity
+  const ahora = Date.now()
+  const nextRound = partidos.find(
+    (m) => m.status === 'pending' && new Date(m.match_date).getTime() > ahora
   )?.round
   const matchesList = nextRound
-    ? allMatches?.filter((m: any) => m.round === nextRound)
-    : allMatches?.slice(0, 15)
+    ? partidos.filter((m) => m.round === nextRound)
+    : partidos.slice(0, 15)
 
   return (
     <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
@@ -55,7 +64,7 @@ export default async function AdminPage() {
       <AdminTabs
         approved={approved}
         pending={pending}
-        matchesList={matchesList || []}
+        matchesList={matchesList}
       />
     </main>
   )

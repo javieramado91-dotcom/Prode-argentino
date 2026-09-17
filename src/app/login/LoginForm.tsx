@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { login, signup } from './actions';
 import { createClient } from '@/lib/supabase/client';
+import { detallesDeError } from '@/lib/errores';
 import styles from './page.module.css';
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -49,11 +50,11 @@ export default function LoginForm({ initialMode }: { initialMode: 'login' | 'reg
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       setResetLoading(false);
       if (error) {
-        const status = (error as any)?.status;
+        const { status, name } = detallesDeError(error);
         const raw = (error?.message || '').toLowerCase();
         if (status === 429 || raw.includes('rate limit') || raw.includes('email rate')) {
           setResetError('Demasiados intentos. Esperá unos minutos antes de pedir otro correo.');
-        } else if (status === 500 || error?.name === 'AuthRetryableFetchError') {
+        } else if (status === 500 || name === 'AuthRetryableFetchError') {
           // El servidor de auth no pudo enviar el email (servicio de correo
           // caído o sin SMTP configurado en Supabase).
           setResetError('No pudimos enviar el correo en este momento. Probá de nuevo en unos minutos.');

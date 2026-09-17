@@ -3,6 +3,7 @@
 // Importa `web-push` (Node), así que solo debe usarse en código de servidor.
 import webpush from 'web-push'
 import { VAPID_PUBLIC_KEY, VAPID_SUBJECT } from './keys'
+import { mensajeDeError } from '../errores'
 
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || ''
 
@@ -36,10 +37,11 @@ export async function sendPush(sub: PushSub, payload: PushPayload): Promise<Send
       JSON.stringify(payload)
     )
     return 'ok'
-  } catch (e: any) {
-    const code = e?.statusCode
-    if (code === 404 || code === 410) return 'gone'
-    console.error('sendPush error:', code, e?.body || e?.message)
+  } catch (e) {
+    // web-push adjunta statusCode/body al error del envío.
+    const err = e as { statusCode?: number; body?: string }
+    if (err?.statusCode === 404 || err?.statusCode === 410) return 'gone'
+    console.error('sendPush error:', err?.statusCode, err?.body || mensajeDeError(e))
     return 'error'
   }
 }

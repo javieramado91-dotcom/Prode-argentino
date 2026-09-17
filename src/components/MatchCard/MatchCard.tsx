@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useTransition } from 'react';
 import styles from './MatchCard.module.css';
 import { savePrediction, getMatchPredictions, MatchPredictionRow } from '@/app/dashboard/actions';
+import { fechaHoraLarga } from '@/lib/fecha';
+import { mensajeDeError } from '@/lib/errores';
 
 export interface MatchProps {
   id: string;
@@ -47,6 +49,10 @@ export default function MatchCard({ match }: { match: MatchProps }) {
   // Resultados dejaba cientos de temporizadores corriendo (pesado en celulares).
   const needsClock = match.status !== 'finished';
   useEffect(() => {
+    // justamente
+    // marcamos el montaje para NO pintar en el servidor el minuto en vivo, que
+    // depende de la hora y rompería la hidratación.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     if (!needsClock) return;
     const id = setInterval(() => setNow(Date.now()), 15000);
@@ -78,13 +84,11 @@ export default function MatchCard({ match }: { match: MatchProps }) {
     setShowPreds(next);
     if (next && preds === null) {
       try { setPreds(await getMatchPredictions(match.id)); }
-      catch (e: any) { setPredsError(e.message || 'Error al cargar.'); }
+      catch (e) { setPredsError(mensajeDeError(e, 'Error al cargar.')); }
     }
   };
 
-  const dateFormatted = new Intl.DateTimeFormat('es-AR', {
-    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-  }).format(new Date(match.matchDate));
+  const dateFormatted = fechaHoraLarga(match.matchDate);
 
   // Minuto de juego: preferimos el REAL que informa ESPN (no cuenta el
   // entretiempo ni los atrasos). Si todavía no sincronizó, caemos al cálculo
@@ -102,8 +106,8 @@ export default function MatchCard({ match }: { match: MatchProps }) {
         setEditing(false);
         setSaved(true);
         setTimeout(() => setSaved(false), 2200);
-      } catch (err: any) {
-        alert(err.message);
+      } catch (err) {
+        alert(mensajeDeError(err, 'No se pudo guardar tu pronóstico.'));
       }
     });
   };

@@ -9,6 +9,7 @@
 //   MAIL_FROM_NAME      = Prode Argentino        (opcional)
 
 import nodemailer from 'nodemailer'
+import { mensajeDeError } from './errores'
 
 const GMAIL_USER = process.env.GMAIL_USER
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD
@@ -43,8 +44,9 @@ export async function sendMail(opts: {
       html: opts.html,
     })
     return { sent: true }
-  } catch (err: any) {
-    console.error('sendMail error:', err?.message || err)
-    return { sent: false, error: err?.message || 'error desconocido' }
+  } catch (err) {
+    const msg = mensajeDeError(err, 'error desconocido')
+    console.error('sendMail error:', msg)
+    return { sent: false, error: msg }
   }
 }

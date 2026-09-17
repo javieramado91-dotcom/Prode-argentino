@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 import type { FechaWinner, Award } from '@/lib/awards'
 import AwardsStoryCard from './AwardsStoryCard'
+import { diaAR } from '@/lib/fecha'
 
 // Botón "Compartir en Insta" + placa 9:16 (1080×1920) para stories.
 // La placa se monta fuera de pantalla y se captura con html2canvas.
@@ -38,7 +39,7 @@ export default function AwardsShare({
       const image = canvas.toDataURL('image/jpeg', 0.92)
       const link = document.createElement('a')
       link.href = image
-      link.download = `prode-premios-${new Date().toISOString().slice(0, 10)}.jpg`
+      link.download = `prode-premios-${diaAR(new Date())}.jpg`
       link.click()
     } catch (e) {
       console.error(e)

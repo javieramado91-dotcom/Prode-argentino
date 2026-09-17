@@ -149,7 +149,10 @@ stable
 as $$
   select u.id,
          coalesce(u.display_name, split_part(u.email, '@', 1)) as display_name,
-         coalesce(sum(p.points_earned), 0) as points
+         -- Solo cuentan los puntos de partidos YA finalizados: así un
+         -- points_earned escrito a mano sobre un partido pendiente (que
+         -- recalculate_points todavía no pisa) nunca suma en la tabla.
+         coalesce(sum(p.points_earned) filter (where m.status = 'finished'), 0) as points
   from public.users u
   left join public.predictions p on p.user_id = u.id
   left join public.matches m on m.id = p.match_id
@@ -260,17 +263,44 @@ create policy matches_admin_write on public.matches
   using (public.is_admin(auth.uid()))
   with check (public.is_admin(auth.uid()));
 
--- predictions: cada usuario gestiona las suyas.
+-- predictions: cada usuario gestiona las suyas, y SOLO con el partido abierto.
+--
+-- IMPORTANTE: la validación de la hora de inicio no puede vivir únicamente en
+-- la server action `savePrediction`. La anon key viaja al navegador (por
+-- diseño), así que cualquiera puede escribir a la tabla directo y saltearse
+-- esa validación: bastaba con esperar el resultado y cargar el marcador
+-- exacto. La regla del juego tiene que estar acá, en la base.
 alter table public.predictions enable row level security;
+
+-- ¿Se puede pronosticar este partido ahora mismo? (pendiente y sin empezar)
+create or replace function public.match_is_open(mid uuid)
+returns boolean
+language sql
+security definer set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.matches m
+    where m.id = mid
+      and m.status = 'pending'
+      and m.match_date > now()
+  );
+$$;
+
 drop policy if exists predictions_select_own on public.predictions;
 create policy predictions_select_own on public.predictions
   for select to authenticated using (auth.uid() = user_id);
+
 drop policy if exists predictions_insert_own on public.predictions;
 create policy predictions_insert_own on public.predictions
-  for insert to authenticated with check (auth.uid() = user_id);
+  for insert to authenticated
+  with check (auth.uid() = user_id and public.match_is_open(match_id));
+
 drop policy if exists predictions_update_own on public.predictions;
 create policy predictions_update_own on public.predictions
-  for update to authenticated using (auth.uid() = user_id);
+  for update to authenticated
+  using (auth.uid() = user_id and public.match_is_open(match_id))
+  with check (auth.uid() = user_id and public.match_is_open(match_id));
 
 -- users: cada uno lee su perfil; los admins ven y aprueban a todos.
 alter table public.users enable row level security;
@@ -278,11 +308,17 @@ drop policy if exists users_select on public.users;
 create policy users_select on public.users
   for select to authenticated
   using (auth.uid() = id or public.is_admin(auth.uid()));
+-- Cada uno edita SOLO su propia fila. Que sea la propia fila no alcanza: sin
+-- restringir además las COLUMNAS, cualquiera podía hacer
+--   update users set is_admin = true, is_approved = true where id = auth.uid()
+-- desde el navegador y quedarse con el panel de administrador. Las columnas
+-- permitidas se acotan con GRANTs en la sección 7; aprobar usuarios pasa ahora
+-- por la RPC admin_approve_user (SECURITY DEFINER), no por un UPDATE directo.
 drop policy if exists users_update_self on public.users;
 create policy users_update_self on public.users
   for update to authenticated
-  using (auth.uid() = id or public.is_admin(auth.uid()))
-  with check (auth.uid() = id or public.is_admin(auth.uid()));
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
 
 -- ---------------------------------------------------------------------------
 -- 6b) Grupos privados (ranking entre amigos)
@@ -394,7 +430,8 @@ as $$
   select u.id,
          coalesce(u.display_name, split_part(u.email, '@', 1)) as display_name,
          coalesce(sum(p.points_earned) filter (
-           where gr.start_round is null or m.round >= gr.start_round
+           where m.status = 'finished'
+             and (gr.start_round is null or m.round >= gr.start_round)
          ), 0) as points
   from public.group_members gm
   join public.groups gr on gr.id = gm.group_id
@@ -483,6 +520,37 @@ begin
   delete from public.groups        where owner_id = uid;
   delete from public.users         where id = uid;
   delete from auth.users           where id = uid;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 6e) Aprobar un usuario (solo admin)
+--     Antes el panel hacía un UPDATE directo sobre public.users. Como ahora
+--     `authenticated` solo puede escribir su propio display_name (ver sección
+--     7), la aprobación pasa por esta función, que valida que quien la llama
+--     sea admin. Devuelve los datos para el email de aviso.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.admin_approve_user(uid uuid)
+returns table (email text, display_name text)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin(auth.uid()) then raise exception 'No autorizado'; end if;
+
+  -- El UPDATE va dentro de un CTE: plpgsql no acepta
+  -- `return query update … returning …` directamente.
+  return query
+  with aprobado as (
+    update public.users u
+       set is_approved = true
+     where u.id = admin_approve_user.uid
+    -- El ::text es a propósito: si la columna fuera varchar, Postgres rechaza
+    -- la función con "structure of query does not match function result type".
+    returning u.email::text as em, u.display_name::text as dn
+  )
+  select a.em, a.dn from aprobado a;
 end;
 $$;
 
@@ -757,7 +825,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 6e) Notificaciones push (Web Push)
+-- 6l) Notificaciones push (Web Push)
 --     - push_subscriptions: una fila por dispositivo/navegador suscripto.
 --     - notification_settings: preferencias por usuario (qué avisos quiere).
 --     - notifications_log: idempotencia, para no mandar el mismo aviso 2 veces.
@@ -807,7 +875,115 @@ create policy notification_settings_own on public.notification_settings
 alter table public.notifications_log enable row level security;
 
 -- ---------------------------------------------------------------------------
--- 7) Bootstrap del primer admin
+-- 6m) Limpieza de políticas heredadas
+--
+--     Las políticas de RLS son PERMISIVAS y se combinan con OR: alcanza con que
+--     UNA deje pasar. Este proyecto arrastraba políticas creadas desde el panel
+--     de Supabase, con el rol `public` (que incluye a los anónimos) y condición
+--     `true`. Convivían con las de acá y las anulaban:
+--
+--       - "Users can view all predictions."  → cualquiera, sin sesión, leía TODOS
+--         los pronósticos, incluso antes de que empezara el partido.
+--       - "Users can update their own predictions." → sin el chequeo de
+--         match_is_open, así que se podía pronosticar con el partido ya jugado
+--         aunque predictions_update_own lo prohibiera.
+--       - "Lectura general de perfiles" → cualquier usuario logueado leía la
+--         fila completa del resto, email incluido.
+--
+--     Para cada una hay una equivalente en `{authenticated}` más abajo, y las
+--     altas de grupos/miembros pasan por RPC SECURITY DEFINER, así que borrarlas
+--     no le saca nada a la app.
+-- ---------------------------------------------------------------------------
+
+drop policy if exists "Users can view all predictions."            on public.predictions;
+drop policy if exists "Users can update their own predictions."    on public.predictions;
+drop policy if exists "Users can insert their own predictions."    on public.predictions;
+
+drop policy if exists "Matches are viewable by everyone."          on public.matches;
+
+drop policy if exists "Anyone can view groups they are in (handled in app) or public i" on public.groups;
+drop policy if exists "Solo admins pueden crear grupos."           on public.groups;
+
+drop policy if exists "Group members are viewable by everyone."    on public.group_members;
+drop policy if exists "Users can join a group."                    on public.group_members;
+
+drop policy if exists "Lectura general de perfiles"                on public.users;
+drop policy if exists "Los usuarios pueden actualizar su propio perfil." on public.users;
+
+-- ---------------------------------------------------------------------------
+-- 7) Endurecimiento: privilegios por COLUMNA
+--
+--     RLS decide QUÉ FILAS puede tocar cada uno; no decide qué columnas. Para
+--     eso están los GRANT por columna. Sin esto, "podés editar tu propia fila"
+--     significaba también "podés darte is_admin" y "podés escribirte los
+--     puntos", porque la anon key está en el navegador.
+--
+--     Las funciones SECURITY DEFINER (recalculate_points, admin_approve_user,
+--     handle_new_user…) corren como el dueño de las tablas, así que estos
+--     GRANTs no las afectan: siguen pudiendo escribir todo.
+-- ---------------------------------------------------------------------------
+
+-- users: `authenticated` solo puede cambiar su nombre visible.
+--        is_admin / is_approved / email / id quedan fuera de su alcance.
+revoke insert, update on public.users from authenticated;
+grant update (display_name) on public.users to authenticated;
+
+-- predictions: `authenticated` puede escribir todo MENOS points_earned.
+--              (los puntos los pone recalculate_points, nadie más)
+--              La lista se arma sola para tolerar las columnas legacy
+--              home_prediction / away_prediction, que pueden no existir.
+do $$
+declare cols text;
+begin
+  select string_agg(quote_ident(column_name), ', ')
+    into cols
+    from information_schema.columns
+   where table_schema = 'public'
+     and table_name   = 'predictions'
+     and column_name <> 'points_earned';
+
+  execute 'revoke insert, update on public.predictions from authenticated';
+  execute format('grant insert (%s) on public.predictions to authenticated', cols);
+  execute format('grant update (%s) on public.predictions to authenticated', cols);
+end $$;
+
+-- El rol `anon` es "cualquiera con la anon key", y esa clave viaja en el bundle
+-- del navegador. No escribe nunca, y las RPC de lectura tampoco son para él
+-- (get_leaderboard le devolvía nombres y puntos de todos sin iniciar sesión).
+-- No se tocan los helpers de las políticas (is_admin, is_group_member,
+-- match_is_open): se evalúan para `authenticated`, no para anon.
+revoke insert, update, delete on
+  public.users, public.predictions, public.matches, public.groups, public.group_members
+  from anon;
+
+-- OJO con el REVOKE de acá abajo: se le saca a PUBLIC, no a `anon`.
+-- Postgres le otorga EXECUTE a PUBLIC por defecto en cada función que se crea,
+-- así que un `revoke ... from anon` no hace nada: el permiso le sigue llegando
+-- por PUBLIC. Hay que revocárselo a PUBLIC y devolvérselo a los roles que sí
+-- tienen que poder llamarlas.
+do $$
+declare f record;
+begin
+  for f in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    where p.pronamespace = 'public'::regnamespace
+      and p.proname in (
+        'get_leaderboard','get_round_scores','get_group_round_scores','get_user_stats',
+        'get_match_predictions','get_group_match_predictions','get_group_member_results',
+        'get_group_leaderboard','my_groups','search_users_for_group','create_group',
+        'join_group','add_user_to_group','renew_group','delete_group',
+        'admin_delete_user','admin_approve_user','recalculate_points'
+      )
+  loop
+    execute format('revoke execute on function %s from public', f.sig);
+    execute format('revoke execute on function %s from anon', f.sig);
+    execute format('grant execute on function %s to authenticated, service_role', f.sig);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 8) Bootstrap del primer admin
 --    Registrate primero en la app con este email, luego corré este UPDATE.
 -- ---------------------------------------------------------------------------
 update public.users

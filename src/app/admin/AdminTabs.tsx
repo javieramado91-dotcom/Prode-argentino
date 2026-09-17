@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { approveUser, deleteUser, toggleFeatured } from './actions';
+import { fechaCompleta } from '@/lib/fecha';
+import ConfirmSubmit from '@/components/ConfirmSubmit/ConfirmSubmit';
 
 type UserRow = {
   id: string;
@@ -14,13 +16,7 @@ type UserRow = {
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
-  return new Intl.DateTimeFormat('es-AR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(iso));
+  return fechaCompleta(iso);
 }
 
 type MatchRow = {
@@ -206,13 +202,15 @@ export default function AdminTabs({
                     </form>
                     <form action={deleteUser}>
                       <input type="hidden" name="userId" value={u.id} />
-                      <button
-                        type="submit"
+                      <ConfirmSubmit
+                        message={`¿Eliminar la solicitud de ${u.display_name || u.email}?
+
+Se borra la cuenta por completo y no se puede deshacer.`}
                         className="btn-ghost"
                         style={{ color: 'var(--color-danger)', borderColor: 'rgba(248,113,113,0.3)' }}
                       >
                         Eliminar
-                      </button>
+                      </ConfirmSubmit>
                     </form>
                   </div>
                 </div>
@@ -295,8 +293,10 @@ export default function AdminTabs({
                       {!u.is_admin && (
                         <form action={deleteUser}>
                           <input type="hidden" name="userId" value={u.id} />
-                          <button
-                            type="submit"
+                          <ConfirmSubmit
+                            message={`¿Eliminar a ${u.display_name || u.email}?
+
+Se borran sus pronósticos, sus torneos y su cuenta. No se puede deshacer.`}
                             style={{
                               padding: '5px 12px',
                               background: 'transparent',
@@ -309,7 +309,7 @@ export default function AdminTabs({
                             }}
                           >
                             Eliminar
-                          </button>
+                          </ConfirmSubmit>
                         </form>
                       )}
                     </td>

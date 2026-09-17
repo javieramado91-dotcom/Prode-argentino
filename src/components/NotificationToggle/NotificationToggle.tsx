@@ -8,6 +8,8 @@ import {
   sendTestNotification,
   type NotifySettings,
 } from '@/app/perfil/notify-actions'
+import { mensajeDeError } from '@/lib/errores'
+import { esIOS } from '@/lib/push/subscribe'
 
 // base64url → Uint8Array (formato que espera pushManager.subscribe).
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -35,8 +37,12 @@ export default function NotificationToggle({ vapidPublicKey, initialSettings }: 
 
   useEffect(() => {
     const ok = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+    // navigator y
+    // window no existen en el servidor: esto solo se puede mirar ya montado.
+    // `supported` arranca en null para no pintar "no soportado" antes de saberlo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupported(ok)
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream)
+    setIsIOS(esIOS())
     setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
     if (!ok) return
     navigator.serviceWorker
@@ -67,8 +73,8 @@ export default function NotificationToggle({ vapidPublicKey, initialSettings }: 
       setSubscription(sub)
       await saveSubscription(JSON.parse(JSON.stringify(sub)))
       flash('¡Notificaciones activadas! 🔔')
-    } catch (e: any) {
-      flash(e?.message || 'No se pudo activar. Probá de nuevo.')
+    } catch (e) {
+      flash(mensajeDeError(e, 'No se pudo activar. Probá de nuevo.'))
     } finally {
       setBusy(false)
     }
@@ -82,8 +88,8 @@ export default function NotificationToggle({ vapidPublicKey, initialSettings }: 
       setSubscription(null)
       if (endpoint) await removeSubscription(endpoint)
       flash('Notificaciones desactivadas en este dispositivo.')
-    } catch (e: any) {
-      flash(e?.message || 'No se pudo desactivar.')
+    } catch (e) {
+      flash(mensajeDeError(e, 'No se pudo desactivar.'))
     } finally {
       setBusy(false)
     }
@@ -105,8 +111,8 @@ export default function NotificationToggle({ vapidPublicKey, initialSettings }: 
     try {
       await sendTestNotification()
       flash('Enviada. Debería llegarte en un instante.')
-    } catch (e: any) {
-      flash(e?.message || 'No se pudo enviar la prueba.')
+    } catch (e) {
+      flash(mensajeDeError(e, 'No se pudo enviar la prueba.'))
     } finally {
       setBusy(false)
     }

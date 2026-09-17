@@ -3,6 +3,8 @@
 import { useRef, useState, forwardRef } from 'react'
 import html2canvas from 'html2canvas'
 import { getGroupMatchPredictions, type GroupPrediction } from '@/app/grupos/actions'
+import { fechaHoraCorta, diaAR } from '@/lib/fecha'
+import { mensajeDeError } from '@/lib/errores'
 
 export type FechaMatch = {
   id: string
@@ -75,7 +77,7 @@ function FechaBlock({ groupId, groupName, fecha }: { groupId: string; groupName:
       const image = canvas.toDataURL('image/jpeg', 0.92)
       const link = document.createElement('a')
       link.href = image
-      link.download = `prode-${fechaTitle.replace(/\s/g, '')}-${new Date().toISOString().slice(0, 10)}.jpg`
+      link.download = `prode-${fechaTitle.replace(/\s/g, '')}-${diaAR(new Date())}.jpg`
       link.click()
     } catch (e) {
       console.error(e)
@@ -160,7 +162,11 @@ function MatchRow({ groupId, match }: { groupId: string; match: FechaMatch }) {
   const [preds, setPreds] = useState<GroupPrediction[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const started = match.status !== 'pending' || new Date(match.date).getTime() <= Date.now()
+  // El reloj se toma una sola vez al montar (inicializador perezoso) en lugar de
+  // leer Date.now() en cada render: leerlo en render es impuro y da resultados
+  // que cambian solos entre un render y el siguiente.
+  const [ahora] = useState(() => Date.now())
+  const started = match.status !== 'pending' || new Date(match.date).getTime() <= ahora
 
   async function toggle() {
     const next = !open
@@ -168,15 +174,15 @@ function MatchRow({ groupId, match }: { groupId: string; match: FechaMatch }) {
     if (next && preds === null && started) {
       try {
         setPreds(await getGroupMatchPredictions(groupId, match.id))
-      } catch (e: any) {
-        setError(e?.message || 'Error al cargar.')
+      } catch (e) {
+        setError(mensajeDeError(e, 'Error al cargar.'))
       }
     }
   }
 
   const scoreLabel =
     match.status === 'pending'
-      ? new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(match.date))
+      ? fechaHoraCorta(match.date)
       : `${match.homeScore ?? '-'} - ${match.awayScore ?? '-'}`
 
   return (

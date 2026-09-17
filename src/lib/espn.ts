@@ -3,7 +3,11 @@
 // /api/notify (cron), para no duplicarla.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { mensajeDeError } from './errores'
 import { assignStableRounds } from '@/lib/rounds'
+
+// El error puede venir de fetch (Error) o de PostgREST ({ message, code }).
+export type SyncError = { message: string; code?: string }
 
 // Fuente: API pública de ESPN (gratis, temporada actual, en vivo).
 const ESPN_LEAGUE = process.env.ESPN_LEAGUE_SLUG || 'arg.1'
@@ -96,7 +100,7 @@ async function fetchWindow(now: Date): Promise<EspnEvent[]> {
 
 export type SyncResult =
   | { ok: true; count: number }
-  | { ok: false; phase: 'espn' | 'upsert'; empty?: boolean; error: any }
+  | { ok: false; phase: 'espn' | 'upsert'; empty?: boolean; error: SyncError }
 
 // Trae la ventana de partidos de ESPN, los upsertea por api_id y recalcula los
 // puntos. `writer` es el cliente con permiso de escritura (service_role o la
@@ -108,7 +112,13 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
   try {
     events = await fetchWindow(now)
   } catch (error) {
-    return { ok: false, phase: 'espn', error }
+    // Lo que cae acá es `unknown`: lo normalizamos a Error para que la ruta
+    // pueda leerle el `.message` sin castear.
+    return {
+      ok: false,
+      phase: 'espn',
+      error: error instanceof Error ? error : new Error(mensajeDeError(error)),
+    }
   }
   if (events.length === 0) {
     return { ok: false, phase: 'espn', empty: true, error: new Error('ESPN no devolvió partidos.') }

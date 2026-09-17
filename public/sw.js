@@ -6,7 +6,7 @@ self.addEventListener('push', function (event) {
   let data = {}
   try {
     data = event.data.json()
-  } catch (e) {
+  } catch {
     data = { title: 'Prode Argentino', body: event.data.text() }
   }
   const title = data.title || 'Prode Argentino'
