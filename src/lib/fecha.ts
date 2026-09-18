@@ -68,3 +68,35 @@ export function diaAR(iso: string | Date): string {
   const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? ''
   return `${get('year')}-${get('month')}-${get('day')}`
 }
+
+// "Viernes 19 de septiembre" — titular de las placas promocionales.
+//
+// Se arma por partes y no con el string que devuelve Intl ("viernes, 19 de
+// septiembre") por dos detalles que se notan en una imagen: la coma sobra en un
+// titular, y la mayúscula inicial no se puede pedir con `text-transform:
+// capitalize` porque eso también capitaliza el "de" ("19 De Septiembre").
+export function diaLargo(iso: string | Date): string {
+  const parts = fmt({ weekday: 'long', day: 'numeric', month: 'long' }).formatToParts(
+    typeof iso === 'string' ? new Date(iso) : iso
+  )
+  const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? ''
+  const dia = get('weekday')
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} ${get('day')} de ${get('month')}`
+}
+
+// "21:15" — hora sola. Las placas van en 24 h: "09:15 p. m." ocupa el doble y
+// queda feo en una imagen. `hourCycle: 'h23'` y no `hour12: false` porque este
+// último devuelve "24:15" para la medianoche en algunos motores.
+export function hora24(iso: string | Date): string {
+  return fmt({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(
+    typeof iso === 'string' ? new Date(iso) : iso
+  )
+}
+
+// "vie, 19 sept · 21:15" — filas de partido dentro de una placa.
+export function diaHora24(iso: string | Date): string {
+  const d = fmt({ weekday: 'short', day: 'numeric', month: 'short' }).format(
+    typeof iso === 'string' ? new Date(iso) : iso
+  )
+  return `${d} · ${hora24(iso)}`
+}

@@ -5,15 +5,18 @@ import SeasonAwards from '@/components/SeasonAwards/SeasonAwards'
 import AddMemberByName from '@/components/AddMemberByName/AddMemberByName'
 import TournamentFechas from '@/components/TournamentFechas/TournamentFechas'
 import TournamentRanking from '@/components/TournamentRanking/TournamentRanking'
+import TournamentFlyer from '@/components/TournamentFlyer/TournamentFlyer'
+import type { FlyerData } from '@/components/TournamentFlyer/FlyerStoryCard'
 import RenewTournament from '@/components/RenewTournament/RenewTournament'
 import DeleteTournament from '@/components/DeleteTournament/DeleteTournament'
 import TopNav from '@/components/TopNav/TopNav'
 import type { MatchRow } from '@/lib/db-types'
-import type { RoundScore } from '@/lib/awards'
+import { computeFechaWinners, type RoundScore } from '@/lib/awards'
+import { pickFlyerFecha } from '@/lib/flyer'
 
 // Las columnas que pide esta página de `matches`, y las filas por fecha que
 // devuelve get_group_round_scores.
-type PartidoDeTorneo = Omit<MatchRow, 'api_id' | 'featured' | 'status_detail'>
+type PartidoDeTorneo = Omit<MatchRow, 'api_id' | 'status_detail'>
 type FilaDeFecha = RoundScore
 
 export const dynamic = 'force-dynamic'
@@ -43,7 +46,7 @@ export default async function GrupoDetallePage(props: {
   // Partidos (para numerar fechas, premios y las fechas en juego del torneo).
   const { data: allMatches } = await supabase
     .from('matches')
-    .select('id, home_team, away_team, home_logo, away_logo, match_date, status, home_score, away_score, round')
+    .select('id, home_team, away_team, home_logo, away_logo, match_date, status, home_score, away_score, round, featured')
     .order('match_date', { ascending: true })
   const matchesList: PartidoDeTorneo[] = allMatches || []
   const roundOrder = Array.from(
@@ -120,6 +123,49 @@ export default async function GrupoDetallePage(props: {
       })),
     }))
 
+  // Flyer promocional de la fecha que viene. Solo mira las fechas en las que
+  // este torneo puntúa: si arranca más adelante, promocionar la de mañana
+  // sería mentira.
+  const proxima = pickFlyerFecha(
+    matchesList
+      .filter((m) => !group.start_round || (m.round !== null && m.round >= group.start_round))
+      .map((m) => ({
+        id: m.id,
+        home: m.home_team,
+        away: m.away_team,
+        date: m.match_date,
+        status: m.status,
+        featured: m.featured,
+        round: m.round,
+      })),
+    roundOrder,
+    now
+  )
+  const ultimoGanador = computeFechaWinners(scoresList, roundOrder)[0] ?? null
+  const flyerData: FlyerData | null = proxima
+    ? {
+        groupName: group.name,
+        fechaLabel: proxima.fecha ? `Fecha ${proxima.fecha}` : 'Próxima fecha',
+        started: proxima.started,
+        kickoff: proxima.kickoff,
+        matches: proxima.matches.map((m) => ({
+          id: m.id,
+          home: m.home,
+          away: m.away,
+          date: m.date,
+          featured: m.featured,
+        })),
+        lastWinner: ultimoGanador
+          ? {
+              fechaLabel: ultimoGanador.fecha ? `Fecha ${ultimoGanador.fecha}` : 'la última fecha',
+              names: ultimoGanador.winners,
+              points: ultimoGanador.points,
+            }
+          : null,
+        inviteCode: group.invite_code,
+      }
+    : null
+
   const inviteText = encodeURIComponent(
     `⚽ ¡Sumate a mi torneo "${group.name}" en el Prode Argentino!\n\n1. Entrá a https://prode-argentino.vercel.app\n2. Registrate y andá a "Grupos"\n3. Unite con el código: ${group.invite_code}`
   )
@@ -156,6 +202,8 @@ export default async function GrupoDetallePage(props: {
       )}
 
       <RenewTournament groupId={id} finalized={finalized} waiting={waiting} isOwner={isOwner} />
+
+      <TournamentFlyer data={flyerData} />
 
       <TournamentRanking groupId={id} groupName={group.name} members={users} roundOrder={roundOrder} />
 
