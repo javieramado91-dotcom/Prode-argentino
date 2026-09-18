@@ -33,6 +33,7 @@ src/app/
   dashboard/        pantalla principal (pestañas: Por jugar / En vivo / Resultados /
                     Calendario / Ranking / Premios)
   grupos/           torneos entre amigos: ranking, fechas en juego, placas exportables
+                    y flyer 9:16 de la fecha que viene
   admin/            aprobar usuarios, elegir Partido de la Fecha
   perfil/           estadísticas, nivel, notificaciones push
   api/sync-matches  trae partidos de ESPN (lo dispara el cliente al entrar)
@@ -42,6 +43,7 @@ src/lib/
   espn-window.ts    qué meses se le piden (módulo aparte: ver "Tests" en AGENTS.md)
   rounds.ts         deduce el número de fecha (ESPN no lo da)
   awards.ts         ganador de cada fecha y premios de la temporada
+  flyer.ts          qué fecha promociona el flyer de un torneo
   fecha.ts          TODO el formateo de fechas, fijado a hora argentina
   errores.ts        normaliza errores desconocidos sin usar `any`
   db-types.ts       forma de las filas de Supabase
