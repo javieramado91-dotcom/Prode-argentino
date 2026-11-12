@@ -13,6 +13,7 @@ export type RoundScore = {
 export type FechaWinner = {
   round: string
   fecha: number | null
+  label: string // "Fecha 7" | "Octavos de final"
   winners: string[] // nombres (puede haber empate)
   winnerIds: string[] // mismos ganadores, por id: dos personas pueden llamarse igual
   points: number
@@ -41,7 +42,12 @@ function roundNumberMap(roundOrder: string[]): Map<string, number> {
 }
 
 // Ganador de cada fecha COMPLETA (todos los partidos finalizados). Empate = varios.
-export function computeFechaWinners(scores: RoundScore[], roundOrder: string[]): FechaWinner[] {
+// `labels` (opcional) da el nombre de cada fecha ("Fecha 7", "Octavos de final").
+export function computeFechaWinners(
+  scores: RoundScore[],
+  roundOrder: string[],
+  labels?: Map<string, { label: string; number: number | null }>
+): FechaWinner[] {
   const nums = roundNumberMap(roundOrder)
   const byRound = new Map<string, RoundScore[]>()
   for (const s of scores) {
@@ -68,24 +74,34 @@ export function computeFechaWinners(scores: RoundScore[], roundOrder: string[]):
     const tied = standings.filter((r) => r.points === max)
     const maxExacts = Math.max(...tied.map((r) => r.exacts))
     const ganadores = tied.filter((r) => r.exacts === maxExacts)
+    const info = labels?.get(round)
+    const fecha = info ? info.number : nums.get(round) ?? null
+    const label = info?.label ?? (fecha ? `Fecha ${fecha}` : 'Fecha')
     out.push({
       round,
-      fecha: nums.get(round) ?? null,
+      fecha,
+      label,
       winners: ganadores.map((r) => r.name),
       winnerIds: ganadores.map((r) => r.userId),
       points: max,
       standings,
     })
   }
-  // Más recientes primero.
-  out.sort((a, b) => (b.fecha ?? 0) - (a.fecha ?? 0) || b.round.localeCompare(a.round))
+  // Más recientes primero (la clave de la fecha es cronológica).
+  out.sort((a, b) => b.round.localeCompare(a.round))
   return out
 }
 
 type Agg = { name: string; exacts: number; bestFecha: number }
 
 // Premios de la temporada, calculados sobre fechas completas.
-export function computeAwards(scores: RoundScore[], fechaWinners: FechaWinner[]): Award[] {
+export function computeAwards(
+  scores: RoundScore[],
+  fechaWinners: FechaWinner[],
+  opts: { roundWord?: 'fecha' | 'ronda' } = {}
+): Award[] {
+  const word = opts.roundWord ?? 'fecha'
+  const plural = word === 'fecha' ? 'fechas' : 'rondas'
   // Agregados por usuario.
   const byUser = new Map<string, Agg>()
   for (const s of scores) {
@@ -122,9 +138,9 @@ export function computeAwards(scores: RoundScore[], fechaWinners: FechaWinner[])
     {
       key: 'rey',
       icon: '👑',
-      title: 'Rey de las fechas',
+      title: `Rey de las ${plural}`,
       winnerName: rey?.name ?? null,
-      detail: rey ? `${rey.value} ${rey.value === 1 ? 'fecha ganada' : 'fechas ganadas'}` : 'Aún sin datos',
+      detail: rey ? `${rey.value} ${rey.value === 1 ? `${word} ganada` : `${plural} ganadas`}` : 'Aún sin datos',
       tie: rey?.tie ?? false,
     },
     {
@@ -138,9 +154,9 @@ export function computeAwards(scores: RoundScore[], fechaWinners: FechaWinner[])
     {
       key: 'record',
       icon: '💥',
-      title: 'Fecha récord',
+      title: word === 'fecha' ? 'Fecha récord' : 'Ronda récord',
       winnerName: record?.name ?? null,
-      detail: record ? `${record.value} puntos en una fecha` : 'Aún sin datos',
+      detail: record ? `${record.value} puntos en una ${word}` : 'Aún sin datos',
       tie: record?.tie ?? false,
     },
   ]

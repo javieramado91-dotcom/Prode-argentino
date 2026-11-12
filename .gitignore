@@ -42,3 +42,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Flyers generados (PNG/HTML para compartir, no van al repo)
+/flyers/

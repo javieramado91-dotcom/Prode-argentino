@@ -6,6 +6,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { mensajeDeError } from './errores'
 import { assignStableRounds } from '@/lib/rounds'
 import { windowMonths } from './espn-window'
+import { isPlayoffRound } from '@/lib/phases'
+
+// Instancia eliminatoria según el slug de ESPN ('clausura---round-of-16',
+// 'apertura---quarterfinals', '...---final'). La fase regular es 'torneo-clausura'.
+function isKnockoutSlug(slug?: string | null): boolean {
+  if (!slug) return false
+  return /---|round-of-|quarterfinal|semifinal|(^|-)final$/.test(slug)
+}
 
 // El error puede venir de fetch (Error) o de PostgREST ({ message, code }).
 export type SyncError = { message: string; code?: string }
@@ -33,6 +41,9 @@ type EspnCompetitor = {
 type EspnEvent = {
   id: string
   date: string
+  // Instancia según ESPN: 'torneo-clausura' (fase regular) o
+  // 'clausura---round-of-16', 'clausura---quarterfinals', etc. (playoffs).
+  season?: { slug?: string }
   status: {
     displayClock?: string
     type: { state: 'pre' | 'in' | 'post'; name?: string }
@@ -118,8 +129,15 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
     .from('matches')
     .select('api_id, round, match_date, home_team, away_team')
 
+  // Los cruces de playoffs (octavos, cuartos, …) NO se agrupan por "equipo
+  // repetido": ESPN puede publicar cruces con rivales a definir y además la
+  // instancia ya viene informada. Se agrupan por instancia (season.slug).
+  const knockout = events.filter((e) => isKnockoutSlug(e.season?.slug))
+  const knockoutIds = new Set(knockout.map((e) => e.id))
+  const regular = events.filter((e) => !knockoutIds.has(e.id))
+
   const rounds = assignStableRounds(
-    events.map((event) => ({
+    regular.map((event) => ({
       id: event.id,
       date: event.date,
       // Usamos los nombres porque son los equipos que persistimos en `matches`
@@ -128,6 +146,10 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
     })),
     (existing || [])
       .filter((match) => match.api_id != null)
+      // Los partidos de playoffs no sirven de contexto para agrupar fechas
+      // regulares: con solo 16 equipos, un partido de la temporada siguiente
+      // "entraría" en el cuadro y heredaría su clave.
+      .filter((match) => !knockoutIds.has(String(match.api_id)) && !isPlayoffRound(match.round))
       .map((match) => ({
         apiId: String(match.api_id),
         round: match.round,
@@ -135,6 +157,29 @@ export async function syncMatches(writer: SupabaseClient): Promise<SyncResult> {
         teams: [match.home_team, match.away_team],
       }))
   )
+
+  // Clave de cada instancia de playoffs: la que ya tenía guardada (estable) o,
+  // si es nueva, el día de su primer partido.
+  const storedRound = new Map(
+    (existing || []).filter((m) => m.api_id != null).map((m) => [String(m.api_id), m.round as string | null])
+  )
+  const bySlug = new Map<string, EspnEvent[]>()
+  for (const e of knockout) {
+    const slug = e.season!.slug!
+    if (!bySlug.has(slug)) bySlug.set(slug, [])
+    bySlug.get(slug)!.push(e)
+  }
+  for (const evs of bySlug.values()) {
+    const votes = new Map<string, number>()
+    for (const e of evs) {
+      const r = storedRound.get(e.id)
+      if (r) votes.set(r, (votes.get(r) || 0) + 1)
+    }
+    const kept = [...votes.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0]
+    const first = evs.map((e) => e.date).sort()[0].slice(0, 10)
+    const key = kept ?? first
+    for (const e of evs) rounds.set(e.id, key)
+  }
   const rows = events.map((e) => {
     const comp = e.competitions[0].competitors
     const home = comp.find((c) => c.homeAway === 'home')!

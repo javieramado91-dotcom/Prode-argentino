@@ -52,7 +52,7 @@ export default async function AdminPage() {
     : partidos.slice(0, 15)
 
   return (
-    <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
+    <main className="animate-fade-in" style={{ padding: '0 2rem 2rem', maxWidth: '1000px', margin: '0 auto' }}>
       <TopNav active="admin" />
       <header style={{ marginBottom: '1.5rem' }}>
         <h1 className="gradient-text" style={{ fontSize: 'clamp(1.5rem, 6vw, 2rem)', margin: 0 }}>Panel de Administrador</h1>

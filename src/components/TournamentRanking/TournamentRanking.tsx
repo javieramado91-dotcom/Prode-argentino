@@ -1,25 +1,30 @@
 'use client'
 
-import { useRef, useState, forwardRef } from 'react'
-import html2canvas from 'html2canvas'
-import lb from '../Leaderboard/Leaderboard.module.css'
+import { useRef, useState } from 'react'
 import { getGroupMemberResults, type MemberResult } from '@/app/grupos/actions'
-import { diaAR } from '@/lib/fecha'
+import { standingPositions, type Standing } from '@/lib/phases'
+import { downloadNodeAsJpg, slugify } from '@/lib/exportImage'
+import { initials, PosBadge } from '@/components/Standings/StandingsTable'
+import StandingsStory from '@/components/Standings/StandingsStory'
+import { IconCamera, IconChevron, IconTable } from '@/components/Icons/Icons'
+import styles from './TournamentRanking.module.css'
 
-type Member = { id: string; name: string; points: number }
-
-// Ranking del torneo + historial por fecha de cada jugador EN LA MISMA TABLA:
+// Tabla general del torneo + historial de cada jugador EN LA MISMA TABLA:
 // tocás una fila y se despliegan sus resultados fecha por fecha.
 export default function TournamentRanking({
   groupId,
   groupName,
-  members,
-  roundOrder,
+  rows,
+  labels,
+  playoffRounds,
+  meId,
 }: {
   groupId: string
   groupName: string
-  members: Member[]
-  roundOrder: string[]
+  rows: Standing[]
+  labels: Record<string, string>
+  playoffRounds: string[]
+  meId?: string
 }) {
   const exportRef = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
@@ -27,8 +32,8 @@ export default function TournamentRanking({
   const [results, setResults] = useState<Record<string, MemberResult[]>>({})
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [errorId, setErrorId] = useState<string | null>(null)
-
-  const roundNum = new Map(roundOrder.map((r, i) => [r, i + 1]))
+  const pos = standingPositions(rows)
+  const playoffSet = new Set(playoffRounds)
 
   async function toggle(id: string) {
     if (openId === id) {
@@ -54,17 +59,7 @@ export default function TournamentRanking({
     if (!exportRef.current) return
     setBusy(true)
     try {
-      const canvas = await html2canvas(exportRef.current, {
-        backgroundColor: '#070d1a',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      })
-      const image = canvas.toDataURL('image/jpeg', 0.92)
-      const link = document.createElement('a')
-      link.href = image
-      link.download = `prode-ranking-${diaAR(new Date())}.jpg`
-      link.click()
+      await downloadNodeAsJpg(exportRef.current, `prode-general-${slugify(groupName)}.jpg`, { width: 1080, height: 1920 })
     } catch (e) {
       console.error(e)
       alert('No se pudo generar la imagen.')
@@ -74,108 +69,66 @@ export default function TournamentRanking({
   }
 
   return (
-    <div className={lb.container}>
-      <div className={lb.header}>
-        <h2 className="gradient-text">Ranking del torneo</h2>
-        <button onClick={exportImage} disabled={busy} className={`btn-primary ${lb.exportBtn}`}>
-          {busy ? 'Generando…' : '📸 Compartir en Insta'}
+    <section className="glass-panel panel-pad" style={{ marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
+        <div>
+          <h2 className="section-title" style={{ marginBottom: '0.3rem' }}>
+            <span className="icon" style={{ display: 'inline-flex' }}><IconTable size={22} /></span>
+            Tabla general
+          </h2>
+          <div className="muted" style={{ fontSize: '0.88rem' }}>Fase de Grupos + Playoffs. Tocá un jugador para ver sus resultados.</div>
+        </div>
+        <button type="button" onClick={exportImage} disabled={busy || rows.length === 0} className="btn-ghost btn-sm">
+          <IconCamera />
+          {busy ? 'Generando…' : 'Compartir'}
         </button>
       </div>
 
-      <div className={`glass-panel ${lb.rankingBoard}`}>
-        <div className={lb.boardHeader}>
-          <h3>Prode Argentino - Ranking del Torneo</h3>
-        </div>
+      {rows.length === 0 && <div className="empty-state">Aún no hay puntos en este torneo.</div>}
 
-        <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', color: 'var(--color-text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.75rem' }}>
-            <span style={{ width: 44 }}>Pos</span>
-            <span style={{ flex: 1 }}>Jugador</span>
-            <span>Pts</span>
-          </div>
+      <div className={styles.list}>
+        {rows.map((m, i) => {
+          const open = openId === m.userId
+          return (
+            <div key={m.userId} className={`${styles.item} ${m.userId === meId ? styles.me : ''} ${open ? styles.open : ''}`}>
+              <button type="button" className={styles.rowBtn} onClick={() => toggle(m.userId)} aria-expanded={open}>
+                <PosBadge pos={pos[i]} />
+                <span className="avatar" aria-hidden="true">{initials(m.name)}</span>
+                <span className={styles.name}>{m.name}</span>
+                {m.userId === meId && <span className="tag tag-celeste">Vos</span>}
+                <span className={styles.exacts} title="Resultados exactos">{m.exacts} <small>ex</small></span>
+                <span className={styles.pts}>{m.points}</span>
+                <span className={styles.chev} aria-hidden="true"><IconChevron size={18} /></span>
+              </button>
 
-          {members.length === 0 && (
-            <div className={lb.emptyState}>Aún no hay puntos en este torneo</div>
-          )}
-
-          {members.map((m, i) => {
-            const open = openId === m.id
-            const top3 = i < 3
-            return (
-              <div
-                key={m.id}
-                style={{
-                  borderRadius: 10,
-                  background: top3 ? 'rgba(0,158,227,0.10)' : 'rgba(255,255,255,0.03)',
-                  overflow: 'hidden',
-                }}
-              >
-                <button
-                  onClick={() => toggle(m.id)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.7rem 0.9rem',
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span style={{ width: 32, textAlign: 'center', fontWeight: 800, fontSize: '1.05rem' }}>
-                    {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}
-                  </span>
-                  <span
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      background: 'var(--color-primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '0.8rem',
-                      color: '#fff',
-                    }}
-                  >
-                    {m.name.substring(0, 2).toUpperCase()}
-                  </span>
-                  <span style={{ flex: 1, fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {m.name}
-                  </span>
-                  <span style={{ fontWeight: 800, color: 'var(--color-accent)', fontSize: '1.15rem' }}>{m.points}</span>
-                  <span style={{ color: 'var(--color-text-muted)', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>›</span>
-                </button>
-
-                {open && (
-                  <div style={{ padding: '0 0.9rem 0.9rem' }}>
-                    {loadingId === m.id && <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Cargando…</div>}
-                    {errorId === m.id && <div style={{ color: 'var(--color-warning)', fontSize: '0.85rem' }}>No se pudieron cargar los resultados.</div>}
-                    {results[m.id] && <MemberByFecha rows={results[m.id]} roundNum={roundNum} />}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        <div className={lb.watermark}>Tocá un jugador para ver sus resultados fecha por fecha</div>
+              {open && (
+                <div className={styles.detail}>
+                  {loadingId === m.userId && <div className="muted" style={{ fontSize: '0.85rem' }}>Cargando…</div>}
+                  {errorId === m.userId && <div style={{ color: 'var(--color-warning)', fontSize: '0.85rem' }}>No se pudieron cargar los resultados.</div>}
+                  {results[m.userId] && <MemberByFecha rows={results[m.userId]} labels={labels} playoffSet={playoffSet} />}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
-      {/* Placa exportable (fuera de pantalla): ranking limpio, sin desplegables. */}
-      <ExportBoard ref={exportRef} groupName={groupName} members={members} />
-    </div>
+      <StandingsStory
+        ref={exportRef}
+        badge="TABLA GENERAL"
+        title="GENERAL"
+        context={groupName}
+        rows={rows}
+        footnote="Fase de Grupos + Playoffs"
+        style={{ position: 'fixed', left: -20000, top: 0 }}
+      />
+    </section>
   )
 }
 
-function MemberByFecha({ rows, roundNum }: { rows: MemberResult[]; roundNum: Map<string, number> }) {
+function MemberByFecha({ rows, labels, playoffSet }: { rows: MemberResult[]; labels: Record<string, string>; playoffSet: Set<string> }) {
   if (rows.length === 0) {
-    return <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Todavía no tiene pronósticos visibles en este torneo.</div>
+    return <div className="muted" style={{ fontSize: '0.85rem' }}>Todavía no tiene pronósticos visibles en este torneo.</div>
   }
   const byRound = new Map<string, MemberResult[]>()
   for (const r of rows) {
@@ -188,27 +141,26 @@ function MemberByFecha({ rows, roundNum }: { rows: MemberResult[]; roundNum: Map
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
       {groups.map(([round, ms]) => {
         const total = ms.reduce((n, x) => n + (x.points_earned ?? 0), 0)
-        const num = roundNum.get(round)
         return (
           <div key={round}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-              <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{num ? `Fecha ${num}` : 'Fecha'}</span>
-              <span className="stat-chip" style={{ fontSize: '0.78rem' }}>{total} pts</span>
+              <span className="display" style={{ fontSize: '1.1rem', color: playoffSet.has(round) ? '#fde68a' : undefined }}>{labels[round] ?? 'Fecha'}</span>
+              <span className="tag tag-celeste">{total} pts</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               {ms.map((x) => {
                 const finished = x.status === 'finished'
                 return (
-                  <div key={x.match_id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', padding: '0.35rem 0.5rem', borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {x.home_team} <span style={{ color: 'var(--color-text-muted)' }}>vs</span> {x.away_team}
+                  <div key={x.match_id} className={styles.result}>
+                    <span className={styles.resultTeams}>
+                      {x.home_team} <span className="muted">vs</span> {x.away_team}
                     </span>
-                    {finished && <span style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>{x.home_score}-{x.away_score}</span>}
-                    <span style={{ fontWeight: 700 }}>{x.predicted_home_score}-{x.predicted_away_score}</span>
+                    {finished && <span className={styles.resultReal} title="Resultado">{x.home_score}-{x.away_score}</span>}
+                    <span className={styles.resultPred} title="Pronóstico">{x.predicted_home_score}-{x.predicted_away_score}</span>
                     {finished && x.points_earned != null ? (
-                      <span style={{ minWidth: 34, textAlign: 'right', fontWeight: 800, color: x.points_earned > 0 ? 'var(--color-success)' : 'var(--color-text-muted)' }}>+{x.points_earned}</span>
+                      <span className={styles.resultPts} data-zero={x.points_earned === 0 || undefined}>+{x.points_earned}</span>
                     ) : (
-                      <span style={{ minWidth: 34, textAlign: 'right', color: 'var(--color-danger)', fontSize: '0.72rem', fontWeight: 700 }}>{x.status === 'in_progress' ? 'VIVO' : '·'}</span>
+                      <span className={styles.resultLive}>{x.status === 'in_progress' ? 'VIVO' : '·'}</span>
                     )}
                   </div>
                 )
@@ -220,57 +172,3 @@ function MemberByFecha({ rows, roundNum }: { rows: MemberResult[]; roundNum: Map
     </div>
   )
 }
-
-const ExportBoard = forwardRef<HTMLDivElement, { groupName: string; members: Member[] }>(function ExportBoard(
-  { groupName, members },
-  ref
-) {
-  return (
-    <div
-      ref={ref}
-      style={{
-        position: 'fixed',
-        left: -20000,
-        top: 0,
-        width: 1000,
-        padding: '64px 64px 52px',
-        boxSizing: 'border-box',
-        background: 'radial-gradient(900px 700px at 50% -10%, rgba(0,158,227,0.22), transparent 60%), linear-gradient(165deg, #0b1220, #0f1e33 60%, #0a1120)',
-        color: '#f1f5f9',
-        fontFamily: 'Outfit, system-ui, sans-serif',
-      }}
-    >
-      <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>⚽ PRODE ARGENTINO</div>
-      <div style={{ fontSize: 60, fontWeight: 900, lineHeight: 1.05, color: '#38bdf8' }}>{groupName}</div>
-      <div style={{ fontSize: 28, color: '#8b9bb4', fontWeight: 600, margin: '4px 0 28px' }}>Ranking del torneo</div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {members.length === 0 && <div style={{ fontSize: 28, color: '#8b9bb4' }}>Aún no hay puntos.</div>}
-        {members.slice(0, 12).map((m, i) => (
-          <div
-            key={m.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 24,
-              padding: '20px 28px',
-              borderRadius: 20,
-              background: i < 3 ? 'rgba(56,189,248,0.14)' : 'rgba(255,255,255,0.04)',
-              border: i < 3 ? '2px solid rgba(56,189,248,0.35)' : '2px solid rgba(255,255,255,0.05)',
-            }}
-          >
-            <span style={{ width: 64, fontSize: 34, fontWeight: 900, textAlign: 'center' }}>
-              {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}
-            </span>
-            <span style={{ flex: 1, fontSize: 40, fontWeight: 800, minWidth: 0 }}>{m.name}</span>
-            <span style={{ fontSize: 42, fontWeight: 900, color: '#fbbf24' }}>{m.points} pts</span>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ textAlign: 'center', marginTop: 40, fontSize: 26, fontWeight: 700, color: '#38bdf8' }}>
-        prode-argentino.vercel.app
-      </div>
-    </div>
-  )
-})

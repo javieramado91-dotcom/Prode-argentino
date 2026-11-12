@@ -10,14 +10,18 @@ import type { FlyerData } from '@/components/TournamentFlyer/FlyerStoryCard'
 import RenewTournament from '@/components/RenewTournament/RenewTournament'
 import DeleteTournament from '@/components/DeleteTournament/DeleteTournament'
 import TopNav from '@/components/TopNav/TopNav'
-import type { MatchRow } from '@/lib/db-types'
+import PlayoffsHero from '@/components/PlayoffsHero/PlayoffsHero'
+import PhaseStandings from '@/components/Standings/PhaseStandings'
+import PhaseArchive from '@/components/PhaseArchive/PhaseArchive'
+import PageTabs from '@/components/PageTabs/PageTabs'
+import { IconArchive, IconArrowRight, IconBracket, IconTable, IconUsers, IconWhatsapp } from '@/components/Icons/Icons'
+import { buildScopeData, meIn } from '@/lib/phaseData'
 import { computeFechaWinners, type RoundScore } from '@/lib/awards'
+import type { MatchRow } from '@/lib/db-types'
 import { pickFlyerFecha } from '@/lib/flyer'
 
-// Las columnas que pide esta página de `matches`, y las filas por fecha que
-// devuelve get_group_round_scores.
+// Las columnas que pide esta página de `matches`.
 type PartidoDeTorneo = Omit<MatchRow, 'api_id' | 'status_detail'>
-type FilaDeFecha = RoundScore
 
 export const dynamic = 'force-dynamic'
 
@@ -43,22 +47,27 @@ export default async function GrupoDetallePage(props: {
   // Si no es miembro, la RLS oculta el grupo → 404.
   if (!group) notFound()
 
-  // Partidos (para numerar fechas, premios y las fechas en juego del torneo).
-  const { data: allMatches } = await supabase
-    .from('matches')
-    .select('id, home_team, away_team, home_logo, away_logo, match_date, status, home_score, away_score, round, featured')
-    .order('match_date', { ascending: true })
+  const [{ data: allMatches }, { data }, { data: roundScores }] = await Promise.all([
+    supabase
+      .from('matches')
+      .select('id, home_team, away_team, home_logo, away_logo, match_date, status, home_score, away_score, round, featured')
+      .order('match_date', { ascending: true }),
+    supabase.rpc('get_group_leaderboard', { gid: id }),
+    // Puntos por fecha del torneo (respeta la fecha de arranque del grupo).
+    supabase.rpc('get_group_round_scores', { gid: id }),
+  ])
   const matchesList: PartidoDeTorneo[] = allMatches || []
-  const roundOrder = Array.from(
-    new Set(matchesList.map((m) => m.round).filter((r): r is string => !!r))
-  ).sort()
+  const memberRows: Row[] = data || []
+  const members = memberRows.map((r) => ({ id: r.user_id, name: r.display_name }))
+  const scores = (roundScores || []) as RoundScore[]
 
-  // Número de la fecha de arranque (posición cronológica entre todas las fechas).
-  let startFechaNum: number | null = null
-  if (group.start_round) {
-    const idx = roundOrder.indexOf(group.start_round)
-    if (idx >= 0) startFechaNum = idx + 1
-  }
+  const scope = buildScopeData({ matches: matchesList, scores, members, context: group.name })
+  const roundOrder = [...scope.info.keys()].sort()
+  const playoffs = scope.playoffs
+  const mePlayoffs = meIn(scope.playoffRows, user.id)
+
+  // Etiqueta de la fecha de arranque del torneo.
+  const startLabel = group.start_round ? scope.labels[group.start_round] ?? null : null
 
   // Estado del torneo argentino / del torneo de amigos.
   // "Terminó" = no quedan partidos sin finalizar (ESPN no da un flag de fin).
@@ -69,28 +78,18 @@ export default async function GrupoDetallePage(props: {
   const waiting = tournamentEnded && !groupStarted
   const isOwner = group.owner_id === user.id
 
-  const { data } = await supabase.rpc('get_group_leaderboard', { gid: id })
-  const rows: Row[] = data || []
-  const users = rows.map((r) => ({ id: r.user_id, name: r.display_name, points: r.points }))
-
-  // Puntos por fecha del torneo (para "Ganador de la fecha" y premios).
-  const { data: roundScores } = await supabase.rpc('get_group_round_scores', { gid: id })
-
-  // Fechas EN JUEGO: empezadas (algún partido ya arrancó) y no cerradas (algún
+  // Rondas EN JUEGO: empezadas (algún partido ya arrancó) y no cerradas (algún
   // partido sin terminar). Por los postergados puede haber más de una a la vez.
-  // Server Component dinámico:
-  // la hora actual es un dato de entrada legítimo. Se lee UNA sola vez y se
-  // reutiliza, que es lo que la regla busca evitar (varias lecturas divergentes).
+  // Server Component dinámico: la hora actual es un dato de entrada legítimo,
+  // se lee UNA sola vez y se reutiliza.
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now()
-  const roundNum = new Map(roundOrder.map((r, i) => [r, i + 1]))
   const byRound = new Map<string, PartidoDeTorneo[]>()
   for (const m of matchesList) {
     if (!m.round) continue
     if (!byRound.has(m.round)) byRound.set(m.round, [])
     byRound.get(m.round)!.push(m)
   }
-  const scoresList: FilaDeFecha[] = roundScores || []
   const activeFechas = [...byRound.entries()]
     .filter(([, ms]) => {
       const started = ms.some((m) => m.status !== 'pending' || new Date(m.match_date).getTime() <= now)
@@ -100,8 +99,9 @@ export default async function GrupoDetallePage(props: {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([round, ms]) => ({
       round,
-      fecha: roundNum.get(round) ?? null,
-      standings: scoresList
+      fecha: scope.info.get(round)?.number ?? null,
+      label: scope.labels[round] ?? 'Fecha',
+      standings: scores
         .filter((s) => s.round === round)
         .map((s) => ({
           name: s.display_name,
@@ -123,8 +123,8 @@ export default async function GrupoDetallePage(props: {
       })),
     }))
 
-  // Flyer promocional de la fecha que viene. Solo mira las fechas en las que
-  // este torneo puntúa: si arranca más adelante, promocionar la de mañana
+  // Flyer promocional de la fecha/ronda que viene. Solo mira las fechas en las
+  // que este torneo puntúa: si arranca más adelante, promocionar la de mañana
   // sería mentira.
   const proxima = pickFlyerFecha(
     matchesList
@@ -141,11 +141,11 @@ export default async function GrupoDetallePage(props: {
     roundOrder,
     now
   )
-  const ultimoGanador = computeFechaWinners(scoresList, roundOrder)[0] ?? null
+  const ultimoGanador = computeFechaWinners(scores, roundOrder, scope.info)[0] ?? null
   const flyerData: FlyerData | null = proxima
     ? {
         groupName: group.name,
-        fechaLabel: proxima.fecha ? `Fecha ${proxima.fecha}` : 'Próxima fecha',
+        fechaLabel: scope.labels[proxima.round] ?? 'Próxima fecha',
         started: proxima.started,
         kickoff: proxima.kickoff,
         matches: proxima.matches.map((m) => ({
@@ -156,66 +156,145 @@ export default async function GrupoDetallePage(props: {
           featured: m.featured,
         })),
         lastWinner: ultimoGanador
-          ? {
-              fechaLabel: ultimoGanador.fecha ? `Fecha ${ultimoGanador.fecha}` : 'la última fecha',
-              names: ultimoGanador.winners,
-              points: ultimoGanador.points,
-            }
+          ? { fechaLabel: ultimoGanador.label, names: ultimoGanador.winners, points: ultimoGanador.points }
           : null,
         inviteCode: group.invite_code,
       }
     : null
 
   const inviteText = encodeURIComponent(
-    `⚽ ¡Sumate a mi torneo "${group.name}" en el Prode Argentino!\n\n1. Entrá a https://prode-argentino.vercel.app\n2. Registrate y andá a "Grupos"\n3. Unite con el código: ${group.invite_code}`
+    `⚽ ¡Sumate a mi torneo "${group.name}" en el Prode Argentino!\n\n1. Entrá a https://prode-argentino.vercel.app\n2. Registrate y andá a "Torneos"\n3. Unite con el código: ${group.invite_code}`
   )
 
+  const playoffsTab = playoffs
+    ? {
+        key: 'playoffs',
+        label: 'Playoffs',
+        icon: <IconBracket />,
+        gold: true,
+        content: (
+          <>
+            <PhaseStandings
+              title="Tabla Playoffs"
+              icon={<IconBracket size={22} />}
+              subtitle="Suma desde octavos hasta la final. A igual puntaje, gana quien tenga más exactos."
+              rows={scope.playoffRows}
+              meId={user.id}
+              storyBadge="PLAYOFFS"
+              storyTitle="TABLA"
+              storyContext={group.name}
+              footnote="Puntos desde octavos de final · desempate por resultados exactos"
+              emptyText="Los playoffs todavía no arrancaron."
+            />
+            <TournamentFechas groupId={id} groupName={group.name} fechas={activeFechas} />
+            <TournamentFlyer data={flyerData} />
+            <div style={{ marginTop: '2rem' }}>
+              <SeasonAwards
+                scores={scope.playoffScores}
+                roundOrder={roundOrder}
+                labels={scope.info}
+                roundWord="ronda"
+                context="torneo"
+                title={`${group.name} · Playoffs`}
+                badge="PLAYOFFS"
+              />
+            </div>
+          </>
+        ),
+      }
+    : null
+
   return (
-    <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
+    <main className="animate-fade-in" style={{ padding: '0 2rem 2rem', maxWidth: '980px', margin: '0 auto' }}>
       <TopNav active="torneos" />
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 className="gradient-text" style={{ fontSize: 'clamp(1.5rem, 6vw, 2rem)', margin: '0 0 0.25rem 0' }}>{group.name}</h1>
-          <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>
-            Código para invitar: <strong style={{ color: 'var(--color-accent)', letterSpacing: 1 }}>{group.invite_code}</strong>
-            {startFechaNum && <> · Puntúa desde la <strong>Fecha {startFechaNum}</strong></>}
-          </p>
+
+      <Link href="/grupos" className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.88rem', minHeight: 32 }}>
+        <IconArrowRight size={16} style={{ transform: 'rotate(180deg)' }} /> Mis torneos
+      </Link>
+
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '0.35rem 0 1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ minWidth: 0 }}>
+          <div className="eyebrow">Torneo de amigos</div>
+          <h1 className="page-title" style={{ margin: '4px 0 0.4rem', overflowWrap: 'anywhere' }}>{group.name}</h1>
+          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+            <span className="tag tag-celeste">Código {group.invite_code}</span>
+            <span className="tag"><IconUsers /> {members.length} jugadores</span>
+            {startLabel && <span className="tag">Desde la {startLabel}</span>}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <a
-            href={`https://wa.me/?text=${inviteText}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary"
-            style={{ background: '#25D366', textDecoration: 'none' }}
-          >
-            📲 Invitar por WhatsApp
-          </a>
-          <Link href="/grupos" className="btn-ghost">← Mis torneos</Link>
-        </div>
+        <a
+          href={`https://wa.me/?text=${inviteText}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-primary"
+          style={{ background: 'linear-gradient(135deg, #1fb855, #25D366)' }}
+        >
+          <IconWhatsapp /> Invitar
+        </a>
       </header>
 
       {errorMsg && (
         <div className="glass-panel" style={{ padding: '0.85rem 1.1rem', marginBottom: '1.25rem', borderColor: 'var(--color-danger)', color: 'var(--color-danger)', fontSize: '0.9rem' }}>
-          ⚠️ {errorMsg}
+          {errorMsg}
         </div>
       )}
 
       <RenewTournament groupId={id} finalized={finalized} waiting={waiting} isOwner={isOwner} />
 
-      <TournamentFlyer data={flyerData} />
+      {playoffs && (
+        <PlayoffsHero
+          season={playoffs.def.season}
+          stages={scope.stages}
+          started={playoffs.started}
+          me={mePlayoffs}
+          context={group.name}
+        />
+      )}
 
-      <TournamentRanking groupId={id} groupName={group.name} members={users} roundOrder={roundOrder} />
-
-      <TournamentFechas groupId={id} groupName={group.name} fechas={activeFechas} />
-
-      <AddMemberByName groupId={id} />
-
-      <div style={{ marginTop: '2rem' }}>
-        <SeasonAwards scores={roundScores || []} roundOrder={roundOrder} context="torneo" title={group.name} />
-      </div>
-
-      {isOwner && <DeleteTournament groupId={id} groupName={group.name} />}
+      <PageTabs
+        sticky
+        tabs={[
+          ...(playoffsTab ? [playoffsTab] : []),
+          {
+            key: 'general',
+            label: 'General',
+            icon: <IconTable />,
+            content: (
+              <>
+                <TournamentRanking
+                  groupId={id}
+                  groupName={group.name}
+                  rows={scope.general}
+                  labels={scope.labels}
+                  playoffRounds={playoffs?.rounds ?? []}
+                  meId={user.id}
+                />
+                {!playoffs && <TournamentFechas groupId={id} groupName={group.name} fechas={activeFechas} />}
+                {!playoffs && <TournamentFlyer data={flyerData} />}
+              </>
+            ),
+          },
+          ...(scope.archive
+            ? [{
+                key: 'grupos',
+                label: 'Fase de Grupos',
+                icon: <IconArchive />,
+                content: <PhaseArchive data={scope.archive} meId={user.id} />,
+              }]
+            : []),
+          {
+            key: 'miembros',
+            label: 'Miembros',
+            icon: <IconUsers />,
+            content: (
+              <>
+                <AddMemberByName groupId={id} />
+                {isOwner && <DeleteTournament groupId={id} groupName={group.name} />}
+              </>
+            ),
+          },
+        ]}
+      />
     </main>
   )
 }

@@ -12,7 +12,9 @@ export default function AwardsShare({
   title,
   fechaWinners,
   awards,
+  badge,
 }: {
+  badge?: string
   title: string
   fechaWinners: FechaWinner[]
   awards: Award[]
@@ -51,8 +53,8 @@ export default function AwardsShare({
 
   return (
     <>
-      <button onClick={share} disabled={busy} className="btn-primary" style={{ fontSize: '0.85rem' }}>
-        {busy ? 'Generando…' : '📸 Compartir en Insta'}
+      <button onClick={share} disabled={busy} className="btn-ghost btn-sm">
+        {busy ? 'Generando…' : 'Compartir premios'}
       </button>
 
       <AwardsStoryCard
@@ -60,6 +62,7 @@ export default function AwardsShare({
         title={title}
         fechaWinners={fechaWinners}
         awards={awards}
+        badge={badge}
         style={{ position: 'fixed', left: -20000, top: 0 }}
       />
     </>

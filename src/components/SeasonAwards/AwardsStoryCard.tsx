@@ -12,6 +12,7 @@ const C = {
 }
 
 type Props = {
+  badge?: string
   title: string
   fechaWinners: FechaWinner[]
   awards: Award[]
@@ -19,7 +20,7 @@ type Props = {
 }
 
 const AwardsStoryCard = forwardRef<HTMLDivElement, Props>(function AwardsStoryCard(
-  { title, fechaWinners, awards, style },
+  { title, fechaWinners, awards, style, badge = 'CLAUSURA 2026' },
   ref
 ) {
   const hero = fechaWinners[0]
@@ -37,7 +38,7 @@ const AwardsStoryCard = forwardRef<HTMLDivElement, Props>(function AwardsStoryCa
         flexDirection: 'column',
         background: `radial-gradient(1200px 900px at 50% -10%, rgba(0,158,227,0.22), transparent 60%), linear-gradient(165deg, #0b1220 0%, #0f1e33 55%, #0a1120 100%)`,
         color: C.text,
-        fontFamily: 'Outfit, system-ui, sans-serif',
+        fontFamily: 'var(--font-body)',
         ...style,
       }}
     >
@@ -47,7 +48,7 @@ const AwardsStoryCard = forwardRef<HTMLDivElement, Props>(function AwardsStoryCa
           <span style={{ fontSize: 44 }}>⚽</span>
           <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: 3 }}>PRODE ARGENTINO</span>
         </div>
-        <span style={{ fontSize: 24, fontWeight: 700, color: C.muted, letterSpacing: 2 }}>CLAUSURA 2026</span>
+        <span style={{ fontSize: 24, fontWeight: 700, color: C.muted, letterSpacing: 2 }}>{badge}</span>
       </div>
 
       {/* Título */}
@@ -86,7 +87,7 @@ const AwardsStoryCard = forwardRef<HTMLDivElement, Props>(function AwardsStoryCa
           <div style={{ fontSize: 150, lineHeight: 1 }}>🏆</div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 4, color: C.accent }}>
-              GANADOR · {hero.fecha ? `FECHA ${hero.fecha}` : 'FECHA'}
+              GANADOR · {hero.label.toUpperCase()}
             </div>
             <div style={{ fontSize: 78, fontWeight: 900, lineHeight: 1.05, marginTop: 8 }}>
               {hero.winners.join(' · ')}
@@ -98,7 +99,7 @@ const AwardsStoryCard = forwardRef<HTMLDivElement, Props>(function AwardsStoryCa
 
       {/* Premios de la temporada */}
       <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 3, color: C.muted, margin: '44px 0 18px' }}>
-        🏅 PREMIOS DE LA TEMPORADA
+        🏅 PREMIOS
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {awards.map((a) => (
@@ -128,7 +129,7 @@ const AwardsStoryCard = forwardRef<HTMLDivElement, Props>(function AwardsStoryCa
       {recent.length > 1 && (
         <>
           <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 3, color: C.muted, margin: '40px 0 16px' }}>
-            🏆 GANADORES POR FECHA
+            🏆 ÚLTIMOS GANADORES
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {recent.map((f) => (
@@ -144,7 +145,7 @@ const AwardsStoryCard = forwardRef<HTMLDivElement, Props>(function AwardsStoryCa
                 }}
               >
                 <span style={{ fontSize: 28, fontWeight: 800, color: C.muted, minWidth: 150 }}>
-                  {f.fecha ? `Fecha ${f.fecha}` : 'Fecha'}
+                  {f.label}
                 </span>
                 <span style={{ fontSize: 34, fontWeight: 800, flex: 1, minWidth: 0 }}>{f.winners.join(', ')}</span>
                 <span style={{ fontSize: 30, fontWeight: 800, color: C.gold }}>{f.points} pts</span>

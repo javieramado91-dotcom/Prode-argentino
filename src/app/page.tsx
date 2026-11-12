@@ -1,39 +1,56 @@
 import Link from 'next/link';
+import styles from './page.module.css';
 import Logo, { LogoMark } from '@/components/Logo/Logo';
+import { IconBracket, IconTarget, IconUsers, IconWhistle } from '@/components/Icons/Icons';
 
 export default function Home() {
   return (
-    <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem' }}>
-        <Logo size={48} />
-        <nav>
-          <Link href="/login" className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>Iniciar Sesión</Link>
-        </nav>
+    <main className="animate-fade-in" style={{ padding: '0 2rem 2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <header className={styles.topbar}>
+        <Logo size={44} />
+        <Link href="/login" className="btn-ghost">Iniciar sesión</Link>
       </header>
 
-      <section style={{ textAlign: 'center', margin: '4rem 0' }}>
-        <LogoMark size={128} style={{ color: 'var(--color-accent)', filter: 'drop-shadow(0 0 24px var(--color-primary-glow))', marginBottom: '1.5rem' }} />
-        <h2 style={{ fontSize: 'clamp(1.9rem, 8vw, 3.5rem)', marginBottom: '1.5rem', lineHeight: 1.1 }}>Demuestra que sabes de fútbol.</h2>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 'clamp(1rem, 4vw, 1.25rem)', maxWidth: '600px', margin: '0 auto 2.5rem' }}>
-          Pronostica los resultados del fútbol argentino, compite con tus amigos y sube en el ranking global en tiempo real.
-        </p>
-        <Link href="/login" className="btn-primary" style={{ padding: '16px 32px', fontSize: '1.125rem', display: 'inline-block', textDecoration: 'none' }}>
-          Empezar a Jugar
-        </Link>
+      <section className={styles.hero}>
+        <div className={styles.heroText}>
+          <span className="tag tag-gold"><IconBracket /> Playoffs · Clausura 2026</span>
+          <h1 className={styles.heroTitle}>
+            Demostrá que <span className={styles.heroAccent}>sabés de fútbol</span>
+          </h1>
+          <p className={styles.heroLead}>
+            Pronosticá los partidos de la Liga Profesional, sumá puntos en vivo y competí con tus amigos.
+            Arrancan los playoffs: desde octavos hasta la final, el que más suma se lleva todo.
+          </p>
+          <div className={styles.heroCtas}>
+            <Link href="/login?mode=register" className="btn-primary" style={{ minHeight: 52, padding: '0 28px', fontSize: '1.15rem' }}>
+              Empezar a jugar
+            </Link>
+            <Link href="/login" className="btn-ghost" style={{ minHeight: 52, padding: '0 22px', fontSize: '1.05rem' }}>
+              Ya tengo cuenta
+            </Link>
+          </div>
+        </div>
+        <div className={styles.heroArt} aria-hidden="true">
+          <div className={styles.heroRing} />
+          <LogoMark size={220} className={styles.heroMark} />
+        </div>
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-          <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--color-primary)' }}>Predicciones en Vivo</h3>
-          <p style={{ color: 'var(--color-text-muted)' }}>Los resultados se actualizan automáticamente al instante de cada gol.</p>
+      <section className={styles.features}>
+        <div className={`glass-panel ${styles.feature}`}>
+          <span className={styles.featureIcon}><IconTarget size={22} /></span>
+          <h3>6 · 3 · 0</h3>
+          <p>6 puntos el resultado exacto, 3 si acertás ganador o empate. El partido destacado vale doble.</p>
         </div>
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-          <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--color-accent)' }}>Torneos Privados</h3>
-          <p style={{ color: 'var(--color-text-muted)' }}>Crea grupos cerrados para competir exclusivamente con tus amigos.</p>
+        <div className={`glass-panel ${styles.feature}`}>
+          <span className={styles.featureIcon}><IconWhistle size={22} /></span>
+          <h3>En vivo</h3>
+          <p>Los resultados se actualizan solos con cada gol y te avisamos cuando empieza y termina tu partido.</p>
         </div>
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-          <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--color-success)' }}>Mismas Reglas</h3>
-          <p style={{ color: 'var(--color-text-muted)' }}>6 puntos por resultado exacto, 3 puntos por acertar ganador o empate.</p>
+        <div className={`glass-panel ${styles.feature}`}>
+          <span className={styles.featureIcon}><IconUsers size={22} /></span>
+          <h3>Torneos privados</h3>
+          <p>Armá tu torneo con amigos: tabla de playoffs, tabla general, ganadores por fecha y placas para compartir.</p>
         </div>
       </section>
     </main>

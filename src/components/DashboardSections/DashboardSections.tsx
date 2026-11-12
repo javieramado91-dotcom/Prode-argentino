@@ -1,16 +1,12 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, type ReactNode } from 'react';
 import MatchCard, { MatchProps } from '../MatchCard/MatchCard';
-import Leaderboard from '../Leaderboard/Leaderboard';
-import SeasonAwards from '../SeasonAwards/SeasonAwards';
 import styles from './DashboardSections.module.css';
-import type { RoundScore } from '@/lib/awards';
+import { IconArchive, IconBall, IconCalendar, IconCheck, IconMedal, IconTable } from '@/components/Icons/Icons';
 import { diaAR, diaMes } from '@/lib/fecha';
 
-type UserScore = { id: string; name: string; points: number };
-
-type TabKey = 'jugar' | 'vivo' | 'resultados' | 'calendario' | 'ranking' | 'premios';
+type TabKey = 'jugar' | 'vivo' | 'resultados' | 'calendario' | 'tablas' | 'premios' | 'grupos';
 
 function roundKey(m: MatchProps): string {
   return m.round || m.matchDate.slice(0, 10);
@@ -40,56 +36,62 @@ function dateRange(matches: MatchProps[]): string {
 
 function Groups({
   groups,
-  numbers,
+  labels,
+  playoffRounds,
   empty,
 }: {
   groups: [string, MatchProps[]][];
-  numbers: Map<string, number>;
+  labels: Record<string, string>;
+  playoffRounds: Set<string>;
   empty: string;
 }) {
-  if (groups.length === 0) return <div className={styles.empty}>{empty}</div>;
+  if (groups.length === 0) return <div className={`glass-panel ${styles.empty}`}>{empty}</div>;
   return (
     <>
-      {groups.map(([key, matches]) => (
-        <div key={key} className={styles.group}>
-          <div className={styles.groupHeader}>
-            <span className={styles.groupTitle}>
-              {numbers.has(key) ? `Fecha ${numbers.get(key)}` : 'Fecha'}
-            </span>
-            <span className={styles.groupCount}>
-              {dateRange(matches)} · {matches.length} partidos
-            </span>
+      {groups.map(([key, matches]) => {
+        const playoff = playoffRounds.has(key);
+        return (
+          <div key={key} className={styles.group}>
+            <div className={styles.groupHeader}>
+              <span className={`${styles.groupTitle} ${playoff ? styles.groupTitlePlayoff : ''}`}>
+                {labels[key] ?? 'Fecha'}
+              </span>
+              {playoff && <span className="tag tag-gold">Playoffs</span>}
+              <span className={styles.groupCount}>
+                {dateRange(matches)} · {matches.length} {matches.length === 1 ? 'partido' : 'partidos'}
+              </span>
+            </div>
+            <div className={styles.grid}>
+              {matches.map((m) => (
+                <MatchCard key={m.id} match={m} />
+              ))}
+            </div>
           </div>
-          <div className={styles.grid}>
-            {matches.map((m) => (
-              <MatchCard key={m.id} match={m} />
-            ))}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }
 
 export default function DashboardSections({
   matches,
-  users,
-  roundScores,
-  roundOrder,
+  labels,
+  playoffRounds: playoffRoundList,
+  tables,
+  awards,
+  archive,
+  initialTab,
 }: {
   matches: MatchProps[];
-  users: UserScore[];
-  roundScores: RoundScore[];
-  roundOrder: string[];
+  labels: Record<string, string>;
+  playoffRounds: string[];
+  tables: ReactNode;
+  awards: ReactNode;
+  archive?: ReactNode;
+  initialTab?: TabKey;
 }) {
+  const playoffRounds = useMemo(() => new Set(playoffRoundList), [playoffRoundList]);
   const live = useMemo(() => matches.filter((m) => m.status === 'in_progress'), [matches]);
-
-  // Numeración de fechas: orden cronológico de todas las fechas conocidas.
-  // Como la base acumula las fechas desde el inicio del torneo, el número es estable.
-  const fechaNumbers = useMemo(() => {
-    const keys = [...new Set(matches.map(roundKey))].sort();
-    return new Map(keys.map((k, i) => [k, i + 1]));
-  }, [matches]);
 
   const jugarGroups = useMemo(() => {
     const list = matches.filter((m) => m.predictable && m.status === 'pending');
@@ -97,18 +99,11 @@ export default function DashboardSections({
   }, [matches]);
 
   const resultadoGroups = useMemo(() => {
-    // TODOS los partidos ya jugados, agrupados por fecha.
-    //
-    // Antes esto usaba una ventana móvil (fecha actual + 2 hacia atrás), donde
-    // la "fecha actual" era la primera con algún partido sin terminar. Con un
-    // partido POSTERGADO esa fecha quedaba clavada en el pasado y los
-    // resultados de las fechas siguientes no se mostraban. Además el Calendario
-    // ya no lista las fechas transcurridas, así que Resultados es el único
-    // lugar del historial: no puede esconder nada.
+    // TODOS los partidos ya jugados, agrupados por fecha. Sin ventana móvil:
+    // con partidos postergados la "fecha actual" quedaba clavada en el pasado
+    // y se escondían resultados (ver memoria del proyecto).
     const list = matches.filter((m) => m.status === 'finished');
-    // Más reciente arriba: fechas de la más actual a la más vieja, y DENTRO de
-    // cada fecha, el último partido jugado primero (para ver el resultado sin
-    // scrollear hasta el fondo).
+    // Más reciente arriba (fechas y partidos dentro de cada fecha).
     return groupByRound(list)
       .map(
         ([key, ms]) =>
@@ -125,63 +120,71 @@ export default function DashboardSections({
   const calendarioGroups = useMemo(
     () =>
       groupByRound(matches)
-        // Una fecha "transcurrida" (todos sus partidos finalizados) sale del
-        // Calendario; su historial queda en Resultados. Dejamos solo las fechas
-        // con al menos un partido por jugar o en curso.
+        // Solo fechas con algún partido por jugar o en curso; las transcurridas
+        // viven en Resultados.
         .filter(([, ms]) => ms.some((m) => m.status !== 'finished'))
         .sort((a, b) => a[0].localeCompare(b[0])),
     [matches]
   );
 
-  const jugarCount = useMemo(
-    () => jugarGroups.reduce((n, [, m]) => n + m.length, 0),
+  const jugarCount = useMemo(() => jugarGroups.reduce((n, [, m]) => n + m.length, 0), [jugarGroups]);
+  const pendingToPredict = useMemo(
+    () => jugarGroups.reduce((n, [, ms]) => n + ms.filter((m) => !m.userPrediction).length, 0),
     [jugarGroups]
   );
-  const resultadosCount = useMemo(
-    () => resultadoGroups.reduce((n, [, m]) => n + m.length, 0),
-    [resultadoGroups]
-  );
 
-  const [tab, setTab] = useState<TabKey>(live.length > 0 ? 'vivo' : 'jugar');
+  const [tab, setTab] = useState<TabKey>(initialTab ?? (live.length > 0 ? 'vivo' : 'jugar'));
 
-  const tabs: { key: TabKey; label: string; badge?: number; live?: boolean }[] = [
-    { key: 'jugar', label: 'Por jugar', badge: jugarCount || undefined },
+  const tabs: { key: TabKey; label: string; icon: ReactNode; badge?: number; live?: boolean; gold?: boolean }[] = [
+    { key: 'jugar', label: 'Por jugar', icon: <IconBall />, badge: jugarCount || undefined },
     ...(live.length > 0
-      ? [{ key: 'vivo' as TabKey, label: 'En vivo', badge: live.length, live: true }]
+      ? [{ key: 'vivo' as TabKey, label: 'En vivo', icon: <span className="live-dot" />, badge: live.length, live: true }]
       : []),
-    { key: 'resultados', label: 'Resultados', badge: resultadosCount || undefined },
-    { key: 'calendario', label: 'Calendario' },
-    { key: 'ranking', label: 'Ranking' },
-    { key: 'premios', label: '🏆 Premios' },
+    { key: 'resultados', label: 'Resultados', icon: <IconCheck /> },
+    { key: 'calendario', label: 'Calendario', icon: <IconCalendar /> },
+    { key: 'tablas', label: 'Tablas', icon: <IconTable /> },
+    { key: 'premios', label: 'Premios', icon: <IconMedal /> },
+    ...(archive ? [{ key: 'grupos' as TabKey, label: 'Fase de Grupos', icon: <IconArchive />, gold: true }] : []),
   ];
 
   return (
     <div>
-      <div className={styles.tabs} role="tablist">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={tab === t.key}
-            className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-            {t.badge != null && (
-              <span className={`${styles.badge} ${t.live ? styles.liveBadge : ''}`}>
-                {t.badge}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className={styles.tabsWrap}>
+        <div className={`segmented ${styles.tabs}`} role="tablist">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              type="button"
+              aria-selected={tab === t.key}
+              className={t.gold ? 'gold' : undefined}
+              onClick={() => setTab(t.key)}
+            >
+              {t.icon}
+              {t.label}
+              {t.badge != null && (
+                <span className={`${styles.badge} ${t.live ? styles.liveBadge : ''}`}>{t.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === 'jugar' && (
-        <Groups
-          groups={jugarGroups}
-          numbers={fechaNumbers}
-          empty="No hay partidos abiertos para pronosticar por ahora. Volvé cuando se acerque la próxima fecha."
-        />
+        <>
+          {pendingToPredict > 0 && (
+            <div className={styles.callout}>
+              <IconBall size={18} />
+              Te faltan <strong>{pendingToPredict}</strong> {pendingToPredict === 1 ? 'pronóstico' : 'pronósticos'} por cargar.
+            </div>
+          )}
+          <Groups
+            groups={jugarGroups}
+            labels={labels}
+            playoffRounds={playoffRounds}
+            empty="No hay partidos abiertos para pronosticar por ahora. Volvé cuando se acerque la próxima fecha."
+          />
+        </>
       )}
 
       {tab === 'vivo' && (
@@ -193,24 +196,22 @@ export default function DashboardSections({
               ))}
             </div>
           ) : (
-            <div className={styles.empty}>No hay partidos en juego en este momento.</div>
+            <div className={`glass-panel ${styles.empty}`}>No hay partidos en juego en este momento.</div>
           )}
         </div>
       )}
 
       {tab === 'resultados' && (
-        <Groups groups={resultadoGroups} numbers={fechaNumbers} empty="Todavía no hay partidos finalizados." />
+        <Groups groups={resultadoGroups} labels={labels} playoffRounds={playoffRounds} empty="Todavía no hay partidos finalizados." />
       )}
 
       {tab === 'calendario' && (
-        <Groups groups={calendarioGroups} numbers={fechaNumbers} empty="Aún no hay fechas cargadas." />
+        <Groups groups={calendarioGroups} labels={labels} playoffRounds={playoffRounds} empty="Aún no hay fechas cargadas." />
       )}
 
-      {tab === 'ranking' && <Leaderboard title="Ranking general" users={users} />}
-
-      {tab === 'premios' && (
-        <SeasonAwards scores={roundScores} roundOrder={roundOrder} context="general" />
-      )}
+      {tab === 'tablas' && <div key="tablas">{tables}</div>}
+      {tab === 'premios' && <div key="premios">{awards}</div>}
+      {tab === 'grupos' && <div key="grupos">{archive}</div>}
     </div>
   );
 }

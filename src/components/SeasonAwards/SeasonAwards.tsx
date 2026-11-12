@@ -1,39 +1,43 @@
 import { computeFechaWinners, computeAwards, type RoundScore } from '@/lib/awards'
+import type { RoundInfo } from '@/lib/phases'
 import AwardsShare from './AwardsShare'
 import FechaWinners from './FechaWinners'
 
-// Muestra los premios de la temporada + el ganador de cada fecha.
+// Premios de una fase + el ganador de cada fecha/ronda.
 // Sirve tanto en la general (dashboard) como dentro de un torneo.
 export default function SeasonAwards({
   scores,
   roundOrder,
   context,
   title,
+  labels,
+  roundWord = 'fecha',
+  badge,
 }: {
   scores: RoundScore[]
   roundOrder: string[]
   context: 'general' | 'torneo'
   title?: string
+  labels?: Map<string, RoundInfo>
+  roundWord?: 'fecha' | 'ronda'
+  badge?: string
 }) {
-  const fechaWinners = computeFechaWinners(scores, roundOrder)
-  const awards = computeAwards(scores, fechaWinners)
+  const fechaWinners = computeFechaWinners(scores, roundOrder, labels)
+  const awards = computeAwards(scores, fechaWinners, { roundWord })
   const shareTitle = title || (context === 'torneo' ? 'Torneo' : 'Ranking general')
+  const word = roundWord === 'fecha' ? 'fecha' : 'ronda'
 
   if (fechaWinners.length === 0) {
     return (
-      <div
-        className="glass-panel"
-        style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}
-      >
-        Todavía no hay ninguna fecha terminada. Cuando se cierre la primera fecha vas a ver
-        acá al ganador y los premios{context === 'torneo' ? ' del torneo' : ''}. 🏆
+      <div className="glass-panel empty-state">
+        Todavía no hay ninguna {word} terminada. Cuando se cierre la primera vas a ver acá al ganador
+        y los premios{context === 'torneo' ? ' del torneo' : ''}.
       </div>
     )
   }
 
   return (
     <div>
-      {/* Encabezado + botón de compartir en Insta (placa 9:16) */}
       <div
         style={{
           display: 'flex',
@@ -44,10 +48,8 @@ export default function SeasonAwards({
           margin: '0.25rem 0 0.9rem',
         }}
       >
-        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
-          🏅 Premios {context === 'torneo' ? 'del torneo' : 'de la temporada'}
-        </h3>
-        <AwardsShare title={shareTitle} fechaWinners={fechaWinners} awards={awards} />
+        <h3 className="section-title" style={{ margin: 0 }}>Premios</h3>
+        <AwardsShare title={shareTitle} fechaWinners={fechaWinners} awards={awards} badge={badge} />
       </div>
       <div
         style={{
@@ -59,13 +61,13 @@ export default function SeasonAwards({
       >
         {awards.map((a) => (
           <div key={a.key} className="glass-panel" style={{ padding: '1.1rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.9rem', lineHeight: 1 }}>{a.icon}</div>
-            <div style={{ fontWeight: 700, marginTop: '0.4rem', fontSize: '0.92rem' }}>{a.title}</div>
+            <div style={{ fontSize: '1.9rem', lineHeight: 1 }} aria-hidden="true">{a.icon}</div>
+            <div className="display" style={{ marginTop: '0.5rem', fontSize: '0.98rem', color: 'var(--color-text-muted)', letterSpacing: '0.08em' }}>{a.title}</div>
             <div
+              className="display"
               style={{
-                marginTop: '0.35rem',
-                fontSize: '1.05rem',
-                fontWeight: 800,
+                marginTop: '0.3rem',
+                fontSize: '1.45rem',
                 color: 'var(--color-accent)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -73,17 +75,14 @@ export default function SeasonAwards({
               }}
             >
               {a.winnerName ?? '—'}
-              {a.tie && <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}> (empate)</span>}
+              {a.tie && <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}> (empate)</span>}
             </div>
-            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
-              {a.detail}
-            </div>
+            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>{a.detail}</div>
           </div>
         ))}
       </div>
 
-      {/* Ganador de cada fecha */}
-      <h3 style={{ margin: '0 0 0.9rem', fontSize: '1.1rem' }}>🏆 Ganador de cada fecha</h3>
+      <h3 className="section-title">Ganador de cada {word}</h3>
       <FechaWinners title={shareTitle} fechas={fechaWinners} />
     </div>
   )

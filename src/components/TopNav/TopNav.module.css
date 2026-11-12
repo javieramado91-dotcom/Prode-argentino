@@ -1,0 +1,208 @@
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: var(--appbar-h);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 -0.5rem 1.5rem;
+  padding: 0 0.5rem;
+  background: linear-gradient(180deg, rgba(6, 12, 24, 0.94) 60%, rgba(6, 12, 24, 0.75));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  flex-shrink: 0;
+}
+.brandMark {
+  color: var(--color-accent);
+  filter: drop-shadow(0 0 10px rgba(0, 158, 227, 0.35));
+}
+.brandText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.brandName {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(120deg, #fff 30%, var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.brandSub {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.links {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+.link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.link:hover {
+  color: var(--color-text-main);
+  background: rgba(148, 163, 184, 0.08);
+}
+.linkActive {
+  color: #fff;
+  background: rgba(0, 158, 227, 0.16);
+}
+.linkActive::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -12px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--color-accent);
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  border: 2px solid var(--color-bg-dark);
+}
+
+.logoutForm {
+  margin-left: 0.25rem;
+}
+.logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  background: transparent;
+  color: var(--color-danger);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.logout:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* ---------------------------------------------------------- Barra inferior */
+.bottomNav,
+.bottomSpacer {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .appbar {
+    margin: 0 -1rem 1.1rem;
+    padding: 0 1rem;
+    height: 58px;
+  }
+  .links {
+    display: none;
+  }
+  .logoutForm {
+    margin-left: auto;
+  }
+  .logoutText {
+    display: none;
+  }
+  .logout {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .bottomNav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: space-around;
+    gap: 0.25rem;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: rgba(6, 12, 24, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--line);
+  }
+  .bottomItem {
+    flex: 1;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 12px;
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    touch-action: manipulation;
+  }
+  .bottomIcon {
+    position: relative;
+    display: inline-flex;
+  }
+  .bottomActive {
+    color: var(--color-accent);
+    background: rgba(0, 158, 227, 0.12);
+  }
+  .bottomSpacer {
+    display: block;
+    position: fixed;
+    height: 0;
+  }
+}

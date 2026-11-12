@@ -3,7 +3,7 @@
 import { useRef, useState, forwardRef } from 'react'
 import html2canvas from 'html2canvas'
 import { getGroupMatchPredictions, type GroupPrediction } from '@/app/grupos/actions'
-import { fechaHoraCorta, diaAR } from '@/lib/fecha'
+import { diaHora24, diaAR } from '@/lib/fecha'
 import { mensajeDeError } from '@/lib/errores'
 
 export type FechaMatch = {
@@ -21,6 +21,7 @@ export type FechaMatch = {
 export type ActiveFecha = {
   round: string
   fecha: number | null
+  label: string
   standings: { name: string; points: number; exacts?: number }[]
   matches: FechaMatch[]
 }
@@ -36,16 +37,16 @@ export default function TournamentFechas({
 }) {
   if (fechas.length === 0) {
     return (
-      <section className="glass-panel" style={{ padding: '1.5rem', marginTop: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-        No hay fechas en juego en este momento. Cuando arranque una fecha vas a ver acá la
-        tabla de puntos de esa fecha y los pronósticos de tus rivales. ⚽
+      <section className="glass-panel empty-state" style={{ marginTop: '1.5rem' }}>
+        No hay ninguna ronda en juego en este momento. Cuando arranque vas a ver acá la
+        tabla de puntos de la ronda y los pronósticos de tus rivales.
       </section>
     )
   }
 
   return (
-    <div style={{ marginTop: '2rem' }}>
-      <h3 style={{ margin: '0 0 0.9rem', fontSize: '1.15rem' }}>🎯 Fechas en juego</h3>
+    <div style={{ marginTop: '1.5rem' }}>
+      <h3 className="section-title">En juego ahora</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {fechas.map((f) => (
           <FechaBlock key={f.round} groupId={groupId} groupName={groupName} fecha={f} />
@@ -62,7 +63,7 @@ function FechaBlock({ groupId, groupName, fecha }: { groupId: string; groupName:
   const live = fecha.matches.some((m) => m.status === 'in_progress')
   const label = live ? 'EN VIVO' : 'PROVISORIO'
   const playedCount = fecha.matches.filter((m) => m.status === 'finished').length
-  const fechaTitle = fecha.fecha ? `Fecha ${fecha.fecha}` : 'Fecha'
+  const fechaTitle = fecha.label
 
   async function exportImage() {
     if (!cardRef.current) return
@@ -90,7 +91,7 @@ function FechaBlock({ groupId, groupName, fecha }: { groupId: string; groupName:
   return (
     <section className="glass-panel" style={{ padding: '1.25rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
-        <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{fechaTitle}</h4>
+        <h4 style={{ margin: 0, fontSize: '1.5rem' }}>{fechaTitle}</h4>
         <span
           style={{
             fontSize: '0.72rem',
@@ -107,8 +108,8 @@ function FechaBlock({ groupId, groupName, fecha }: { groupId: string; groupName:
         <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
           {playedCount}/{fecha.matches.length} jugados
         </span>
-        <button className="btn-ghost" onClick={exportImage} disabled={busy} style={{ marginLeft: 'auto', fontSize: '0.8rem' }}>
-          {busy ? 'Generando…' : '📸 Exportar tabla'}
+        <button className="btn-ghost btn-sm" onClick={exportImage} disabled={busy} style={{ marginLeft: 'auto' }}>
+          {busy ? 'Generando…' : 'Exportar tabla'}
         </button>
       </div>
 
@@ -182,7 +183,7 @@ function MatchRow({ groupId, match }: { groupId: string; match: FechaMatch }) {
 
   const scoreLabel =
     match.status === 'pending'
-      ? fechaHoraCorta(match.date)
+      ? diaHora24(match.date)
       : `${match.homeScore ?? '-'} - ${match.awayScore ?? '-'}`
 
   return (
@@ -204,14 +205,14 @@ function MatchRow({ groupId, match }: { groupId: string; match: FechaMatch }) {
       {started ? (
         <button
           onClick={toggle}
-          className="btn-ghost"
-          style={{ marginTop: '0.5rem', fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}
+          className="btn-ghost btn-sm"
+          style={{ marginTop: '0.5rem' }}
         >
           {open ? 'Ocultar pronósticos' : 'Ver pronósticos del torneo'}
         </button>
       ) : (
         <div style={{ marginTop: '0.4rem', fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
-          🔒 Los pronósticos se ven cuando empiece el partido.
+          Los pronósticos se ven cuando empiece el partido.
         </div>
       )}
 
@@ -254,14 +255,14 @@ const ExportCard = forwardRef<
         boxSizing: 'border-box',
         background: 'radial-gradient(900px 700px at 50% -10%, rgba(0,158,227,0.22), transparent 60%), linear-gradient(165deg, #0b1220, #0f1e33 60%, #0a1120)',
         color: '#f1f5f9',
-        fontFamily: 'Outfit, system-ui, sans-serif',
+        fontFamily: 'var(--font-body)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: 2 }}>⚽ PRODE ARGENTINO</span>
         <span style={{ fontSize: 22, fontWeight: 800, color: label === 'EN VIVO' ? '#f87171' : '#fbbf24', letterSpacing: 1 }}>{label}</span>
       </div>
-      <div style={{ fontSize: 66, fontWeight: 900, lineHeight: 1, color: '#38bdf8' }}>{fechaTitle}</div>
+      <div style={{ fontSize: 76, fontWeight: 900, lineHeight: 1, color: '#38bdf8', fontFamily: 'var(--font-display)', textTransform: 'uppercase' }}>{fechaTitle}</div>
       <div style={{ fontSize: 30, color: '#8b9bb4', fontWeight: 600, margin: '6px 0 6px' }}>{groupName}</div>
       <div style={{ fontSize: 24, color: '#8b9bb4', marginBottom: 28 }}>{playedCount}/{total} partidos jugados</div>
 

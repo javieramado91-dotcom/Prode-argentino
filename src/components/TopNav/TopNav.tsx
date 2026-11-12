@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { LogoMark } from '@/components/Logo/Logo'
+import { IconCrown, IconHome, IconLogout, IconTrophy, IconUser } from '@/components/Icons/Icons'
+import styles from './TopNav.module.css'
 
-// Menú de navegación compartido para todos los apartados (Perfil, Torneos,
-// Admin, etc.). Muestra accesos directos a las secciones principales para
-// facilitar moverse por la página desde cualquier lado. Se autoabastece de
-// datos (si el usuario es admin y cuántas solicitudes pendientes hay).
+// Barra de la app compartida por todos los apartados: marca + navegación arriba
+// (escritorio) y barra inferior tipo app (celular). Se autoabastece de datos
+// (si el usuario es admin y cuántas solicitudes pendientes hay).
 export default async function TopNav({
   active,
 }: {
@@ -33,75 +35,77 @@ export default async function TopNav({
     pendingCount = count ?? 0
   }
 
-  const items: { key: NonNullable<typeof active>; href: string; label: string }[] = [
-    { key: 'inicio', href: '/dashboard', label: '🏠 Inicio' },
-    { key: 'torneos', href: '/grupos', label: '🏆 Torneos' },
-    { key: 'perfil', href: '/perfil', label: '👤 Perfil' },
+  return <TopNavView active={active} isAdmin={isAdmin} pendingCount={pendingCount} />
+}
+
+// Vista pura (sin datos): la usa TopNav y sirve para previsualizar.
+export function TopNavView({
+  active,
+  isAdmin,
+  pendingCount,
+}: {
+  active?: 'inicio' | 'torneos' | 'perfil' | 'admin'
+  isAdmin: boolean
+  pendingCount: number
+}) {
+  const items = [
+    { key: 'inicio' as const, href: '/dashboard', label: 'Inicio', Icon: IconHome },
+    { key: 'torneos' as const, href: '/grupos', label: 'Torneos', Icon: IconTrophy },
+    { key: 'perfil' as const, href: '/perfil', label: 'Perfil', Icon: IconUser },
+    ...(isAdmin ? [{ key: 'admin' as const, href: '/admin', label: 'Admin', Icon: IconCrown }] : []),
   ]
 
-  const activeStyle = {
-    borderColor: 'var(--color-accent)',
-    color: 'var(--color-accent)',
-    fontWeight: 700,
-  } as const
-
   return (
-    <nav style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-      {items.map((it) => (
-        <Link
-          key={it.key}
-          href={it.href}
-          className="btn-ghost"
-          aria-current={active === it.key ? 'page' : undefined}
-          style={active === it.key ? activeStyle : undefined}
-        >
-          {it.label}
+    <>
+      <header className={styles.appbar}>
+        <Link href="/dashboard" className={styles.brand} aria-label="Prode Argentino — inicio">
+          <LogoMark size={34} className={styles.brandMark} />
+          <span className={styles.brandText}>
+            <span className={styles.brandName}>PRODE</span>
+            <span className={styles.brandSub}>Fútbol Argentino</span>
+          </span>
         </Link>
-      ))}
 
-      {isAdmin && (
-        <Link
-          href="/admin"
-          className="btn-ghost"
-          aria-current={active === 'admin' ? 'page' : undefined}
-          style={{ position: 'relative', ...(active === 'admin' ? activeStyle : {}) }}
-        >
-          👑 Admin
-          {pendingCount > 0 && (
-            <span
-              style={{
-                position: 'absolute',
-                top: -7,
-                right: -7,
-                background: 'var(--color-danger)',
-                color: '#fff',
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                lineHeight: 1,
-                minWidth: 18,
-                height: 18,
-                padding: '0 5px',
-                borderRadius: 999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '2px solid var(--color-bg-dark)',
-              }}
+        <nav className={styles.links} aria-label="Principal">
+          {items.map(({ key, href, label, Icon }) => (
+            <Link
+              key={key}
+              href={href}
+              className={`${styles.link} ${active === key ? styles.linkActive : ''}`}
+              aria-current={active === key ? 'page' : undefined}
             >
-              {pendingCount}
-            </span>
-          )}
-        </Link>
-      )}
+              <Icon size={18} />
+              {label}
+              {key === 'admin' && pendingCount > 0 && <span className={styles.badge}>{pendingCount}</span>}
+            </Link>
+          ))}
+        </nav>
 
-      <form action="/auth/signout" method="post" style={{ marginLeft: 'auto' }}>
-        <button
-          className="btn-ghost"
-          style={{ color: 'var(--color-danger)', borderColor: 'rgba(248,113,113,0.3)' }}
-        >
-          Salir
-        </button>
-      </form>
-    </nav>
+        <form action="/auth/signout" method="post" className={styles.logoutForm}>
+          <button className={styles.logout} aria-label="Cerrar sesión" title="Cerrar sesión">
+            <IconLogout size={18} />
+            <span className={styles.logoutText}>Salir</span>
+          </button>
+        </form>
+      </header>
+
+      {/* Barra inferior (celular) */}
+      <nav className={styles.bottomNav} aria-label="Principal (móvil)" data-bottom-nav>
+        {items.map(({ key, href, label, Icon }) => (
+          <Link
+            key={key}
+            href={href}
+            className={`${styles.bottomItem} ${active === key ? styles.bottomActive : ''}`}
+            aria-current={active === key ? 'page' : undefined}
+          >
+            <span className={styles.bottomIcon}>
+              <Icon size={22} />
+              {key === 'admin' && pendingCount > 0 && <span className={styles.badge}>{pendingCount}</span>}
+            </span>
+            {label}
+          </Link>
+        ))}
+      </nav>
+    </>
   )
 }

@@ -1,0 +1,255 @@
+.hero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem 1.5rem 1.25rem;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background:
+    radial-gradient(520px 260px at 100% 0%, rgba(251, 191, 36, 0.16), transparent 70%),
+    radial-gradient(620px 300px at 0% 0%, rgba(0, 158, 227, 0.28), transparent 70%),
+    linear-gradient(160deg, #0c1a33, #08111f 70%);
+  box-shadow: 0 24px 50px -30px rgba(0, 158, 227, 0.55);
+}
+.stripes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(100deg, rgba(116, 172, 223, 0.06) 0 34px, transparent 34px 68px);
+  -webkit-mask-image: linear-gradient(90deg, transparent 35%, #000);
+  mask-image: linear-gradient(90deg, transparent 35%, #000);
+}
+.top {
+  position: relative;
+  display: flex;
+  gap: 1.25rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.titleBlock {
+  flex: 1;
+  min-width: 240px;
+}
+.title {
+  font-size: clamp(3rem, 13vw, 4.6rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 0.88;
+  letter-spacing: -0.01em;
+  margin: 0.15rem 0 0.5rem;
+}
+.titleGold {
+  background: linear-gradient(100deg, #fff 0%, #fde68a 40%, var(--color-gold) 70%, var(--color-gold-deep));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  padding-right: 0.1em;
+}
+.lead {
+  max-width: 56ch;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.lead strong {
+  color: #fff;
+}
+
+.me {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0.85rem 1.1rem;
+  border-radius: 16px;
+  background: rgba(2, 6, 16, 0.45);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  min-width: 170px;
+}
+.meLabel {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+.mePos {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.mePos small {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+.meStats {
+  display: flex;
+  gap: 0.8rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+.meStats strong {
+  color: #fff;
+  font-size: 1.1rem;
+  margin-right: 2px;
+}
+
+/* ------------------------------------------------------------- Cuadro */
+.bracket {
+  position: relative;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 1.25rem 0 1rem;
+}
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  background: rgba(2, 6, 16, 0.4);
+  border: 1px solid var(--line);
+}
+.stageIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--color-text-muted);
+  font-size: 1rem;
+}
+.stageName {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.stageWhen {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+.stageStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0.3rem;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+.connector {
+  position: absolute;
+  top: 50%;
+  right: -0.6rem;
+  width: 0.6rem;
+  height: 2px;
+  background: var(--line-strong);
+}
+
+.done {
+  border-color: rgba(52, 211, 153, 0.25);
+}
+.done .stageIcon {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--color-success);
+}
+.done .stageStatus {
+  color: var(--color-success);
+}
+.live {
+  border-color: rgba(255, 77, 94, 0.45);
+  background: linear-gradient(160deg, rgba(255, 77, 94, 0.12), rgba(2, 6, 16, 0.4));
+}
+.live .stageStatus {
+  color: #ff8a95;
+}
+.live .stageIcon {
+  background: rgba(255, 77, 94, 0.15);
+  color: #ff8a95;
+}
+.next {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: linear-gradient(160deg, rgba(0, 158, 227, 0.2), rgba(2, 6, 16, 0.4));
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.15), 0 10px 26px -16px rgba(0, 158, 227, 0.9);
+}
+.next .stageIcon {
+  background: var(--color-primary);
+  color: #fff;
+}
+.next .stageStatus {
+  color: var(--color-accent);
+}
+.stage:last-child .stageIcon {
+  color: var(--color-gold);
+  background: rgba(251, 191, 36, 0.14);
+}
+
+/* ------------------------------------------------------------- Reglas */
+.rules {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.rule strong {
+  color: #fff;
+  font-weight: 700;
+}
+.rule svg {
+  color: var(--color-accent);
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 1.2rem 1rem 1rem;
+  }
+  .bracket {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .connector {
+    display: none;
+  }
+  .me {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .mePos {
+    font-size: 2.2rem;
+  }
+}
+
+.mePos .meSoon {
+  display: block;
+  margin: 0.35rem 0 0.2rem;
+  font-size: 1.15rem;
+  color: #fff;
+}

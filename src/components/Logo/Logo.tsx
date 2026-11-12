@@ -65,7 +65,7 @@ export function Logo({ size = 44, subtitle = 'Fútbol Argentino' }: { size?: num
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
       <LogoMark size={size} style={{ color: 'var(--color-accent)' }} />
       <div style={{ lineHeight: 1 }}>
-        <div className="gradient-text" style={{ fontSize: size * 0.6, fontWeight: 800, letterSpacing: '0.08em' }}>
+        <div className="gradient-text" style={{ fontFamily: 'var(--font-display)', fontSize: size * 0.68, fontWeight: 900, letterSpacing: '0.08em' }}>
           PRODE
         </div>
         <div style={{ fontSize: size * 0.26, color: 'var(--color-text-muted)', letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 2 }}>

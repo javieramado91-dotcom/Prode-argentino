@@ -1,15 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { MatchProps } from '@/components/MatchCard/MatchCard'
 import LiveRefresher from '@/components/LiveRefresher/LiveRefresher'
 import AutoSync from '@/components/AutoSync/AutoSync'
 import DashboardSections from '@/components/DashboardSections/DashboardSections'
 import NotificationBanner from '@/components/NotificationBanner/NotificationBanner'
-import { LogoMark } from '@/components/Logo/Logo'
+import TopNav from '@/components/TopNav/TopNav'
+import PlayoffsHero from '@/components/PlayoffsHero/PlayoffsHero'
+import PhaseStandings from '@/components/Standings/PhaseStandings'
+import PhaseArchive from '@/components/PhaseArchive/PhaseArchive'
+import PageTabs from '@/components/PageTabs/PageTabs'
+import SeasonAwards from '@/components/SeasonAwards/SeasonAwards'
+import { IconBracket, IconTable, IconTrophy } from '@/components/Icons/Icons'
 import { PREDICTABLE_ROUNDS } from '@/lib/prode'
-import { VAPID_PUBLIC_KEY } from '@/lib/push/keys'
+import { buildScopeData, meIn } from '@/lib/phaseData'
+import type { RoundScore } from '@/lib/awards'
 import type { MatchRow, PredictionRow } from '@/lib/db-types'
+import { VAPID_PUBLIC_KEY } from '@/lib/push/keys'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,49 +36,32 @@ export default async function DashboardPage() {
 
   if (!profile?.is_approved) redirect('/pending-approval')
 
-  const { data: dbMatches } = await supabase
-    .from('matches')
-    .select('*')
-    .order('match_date', { ascending: true })
+  const [{ data: dbMatches }, { data: predictions }, { data: leaderboard }, { data: roundScores }] = await Promise.all([
+    supabase.from('matches').select('*').order('match_date', { ascending: true }),
+    supabase.from('predictions').select('*').eq('user_id', user.id),
+    supabase.rpc('get_leaderboard'),
+    // Puntos por fecha (para tablas por fase, ganadores y premios).
+    supabase.rpc('get_round_scores'),
+  ])
 
-  const { data: predictions } = await supabase
-    .from('predictions')
-    .select('*')
-    .eq('user_id', user.id)
-
-  // Solicitudes de registro pendientes (para el badge rojo del admin).
-  let pendingCount = 0
-  if (profile?.is_admin) {
-    const { count } = await supabase
-      .from('users')
-      .select('id', { count: 'exact', head: true })
-      .eq('is_approved', false)
-      .eq('is_admin', false)
-    pendingCount = count ?? 0
-  }
-
-  const { data: leaderboard } = await supabase.rpc('get_leaderboard')
   const board: LeaderboardRow[] = leaderboard || []
-
-  // Puntos por fecha (para "Ganador de la fecha" y premios de la temporada).
-  const { data: roundScores } = await supabase.rpc('get_round_scores')
-  const partidos: MatchRow[] = dbMatches || []
+  const members = board.map((r) => ({ id: r.user_id, name: r.display_name }))
+  const scores = (roundScores || []) as RoundScore[]
+  const matchRows: MatchRow[] = dbMatches || []
   const pronosticos: PredictionRow[] = predictions || []
-  const roundOrder = Array.from(
-    new Set(partidos.map((m) => m.round).filter((r): r is string => !!r))
-  ).sort()
-  const myPoints = board.find((r) => r.user_id === user.id)?.points ?? 0
-  const myPosition = board.findIndex((r) => r.user_id === user.id) + 1
+
+  const scope = buildScopeData({ matches: matchRows, scores, members, context: 'Ranking general' })
+  const meGeneral = meIn(scope.general, user.id)
+  const mePlayoffs = meIn(scope.playoffRows, user.id)
 
   // Ventana de predicción: las próximas PREDICTABLE_ROUNDS fechas (por su round).
-  // Server Component dinámico:
-  // la hora actual es un dato de entrada legítimo. Se lee UNA sola vez y se
-  // reutiliza, que es lo que la regla busca evitar (varias lecturas divergentes).
+  // Server Component dinámico: la hora actual es un dato de entrada legítimo,
+  // se lee UNA sola vez y se reutiliza.
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now()
   const upcomingRounds = Array.from(
     new Set(
-      partidos
+      matchRows
         .filter((m) => m.status === 'pending' && new Date(m.match_date).getTime() > now)
         .map((m) => m.round)
         .filter((r): r is string => !!r)
@@ -84,14 +74,14 @@ export default async function DashboardPage() {
   // Fechas con TODOS sus partidos finalizados (fecha cerrada). Los pronósticos
   // de los rivales solo se ven mientras la fecha NO esté cerrada.
   const roundAllFinished = new Map<string, boolean>()
-  for (const m of partidos) {
+  for (const m of matchRows) {
     const r = m.round
     if (!r) continue
     if (!roundAllFinished.has(r)) roundAllFinished.set(r, true)
     if (m.status !== 'finished') roundAllFinished.set(r, false)
   }
 
-  const realMatches: MatchProps[] = partidos.map((m) => {
+  const realMatches: MatchProps[] = matchRows.map((m) => {
     const pred = pronosticos.find((p) => p.match_id === m.id)
     const isFuturePending = m.status === 'pending' && new Date(m.match_date).getTime() > now
     return {
@@ -107,6 +97,7 @@ export default async function DashboardPage() {
       awayScore: m.away_score ?? undefined,
       featured: m.featured,
       round: m.round ?? undefined,
+      roundLabel: m.round ? scope.labels[m.round] : undefined,
       predictable: isFuturePending && !!m.round && predictableRounds.has(m.round),
       fechaOpen: m.round ? roundAllFinished.get(m.round) === false : false,
       userPrediction: pred
@@ -120,70 +111,114 @@ export default async function DashboardPage() {
   })
 
   const hasLive = realMatches.some((m) => m.status === 'in_progress')
-  const boardUsers = board.map((r) => ({ id: r.user_id, name: r.display_name, points: r.points }))
+  const name = profile.display_name || user.email
+  const firstName = String(name).split(' ')[0]
+
+  const playoffs = scope.playoffs
+  const tables = (
+    <PageTabs
+      tabs={[
+        ...(playoffs
+          ? [{
+              key: 'playoffs',
+              label: 'Playoffs',
+              icon: <IconBracket />,
+              gold: true,
+              content: (
+                <PhaseStandings
+                  title="Tabla Playoffs"
+                  icon={<IconBracket size={22} />}
+                  subtitle="Suma desde octavos hasta la final. A igual puntaje, gana quien tenga más exactos."
+                  rows={scope.playoffRows}
+                  meId={user.id}
+                  storyBadge="PLAYOFFS"
+                  storyTitle="TABLA"
+                  storyContext="Ranking general"
+                  footnote="Puntos desde octavos de final · desempate por resultados exactos"
+                  emptyText="Los playoffs todavía no arrancaron."
+                />
+              ),
+            }]
+          : []),
+        {
+          key: 'general',
+          label: 'General',
+          icon: <IconTable />,
+          content: (
+            <PhaseStandings
+              title="Tabla general"
+              icon={<IconTable size={22} />}
+              subtitle="Todo lo jugado desde el inicio: Fase de Grupos + Playoffs."
+              rows={scope.general}
+              meId={user.id}
+              storyBadge="TABLA GENERAL"
+              storyTitle="GENERAL"
+              storyContext="Ranking general"
+              footnote="Fase de Grupos + Playoffs"
+            />
+          ),
+        },
+      ]}
+    />
+  )
+
+  const awards = playoffs ? (
+    <SeasonAwards
+      scores={scope.playoffScores}
+      roundOrder={[...scope.info.keys()].sort()}
+      labels={scope.info}
+      roundWord="ronda"
+      context="general"
+      title="Playoffs · Ranking general"
+      badge="PLAYOFFS"
+    />
+  ) : (
+    <SeasonAwards scores={scores} roundOrder={[...scope.info.keys()].sort()} labels={scope.info} context="general" />
+  )
 
   return (
-    <main className="animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+    <main className="animate-fade-in" style={{ padding: '0 2rem 2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <TopNav active="inicio" />
       {/* Sincroniza al entrar/refrescar y auto-refresca si hay partidos en vivo. */}
       <AutoSync />
       <LiveRefresher active={hasLive} intervalMs={30000} />
 
-      <header style={{ marginBottom: '1.5rem' }}>
-        {/* Barra superior: marca + puntos */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
-            <LogoMark size={36} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
-            <div style={{ minWidth: 0 }}>
-              <div className="gradient-text" style={{ fontSize: '1.25rem', fontWeight: 800, lineHeight: 1.15 }}>Prode Argentino</div>
-              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {profile.display_name || user.email}
-                {myPosition > 0 && <> · puesto <strong style={{ color: 'var(--color-accent)' }}>#{myPosition}</strong></>}
-              </div>
-            </div>
-          </div>
-          <div className="stat-chip">
-            Puntos <strong>{myPoints}</strong>
-          </div>
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
+        <div style={{ minWidth: 0 }}>
+          <div className="eyebrow">Liga Profesional · Clausura 2026</div>
+          <h1 className="page-title" style={{ marginTop: 4 }}>Hola, {firstName}</h1>
         </div>
-
-        {/* Navegación */}
-        <nav style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <Link href="/grupos" className="btn-ghost">🏆 Torneos</Link>
-          <Link href="/perfil" className="btn-ghost">👤 Perfil</Link>
-          {profile?.is_admin && (
-            <Link href="/admin" className="btn-ghost" style={{ position: 'relative' }}>
-              👑 Admin
-              {pendingCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: -7, right: -7,
-                  background: 'var(--color-danger)', color: '#fff',
-                  fontSize: '0.68rem', fontWeight: 800, lineHeight: 1,
-                  minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid var(--color-bg-dark)',
-                }}>
-                  {pendingCount}
-                </span>
-              )}
-            </Link>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {meGeneral && (
+            <span className="stat-chip" title="Tabla general">
+              <IconTrophy size={16} /> General <strong>#{meGeneral.position}</strong> · <strong>{meGeneral.points}</strong> pts
+            </span>
           )}
-          <form action="/auth/signout" method="post" style={{ marginLeft: 'auto' }}>
-            <button className="btn-ghost" style={{ color: 'var(--color-danger)', borderColor: 'rgba(248,113,113,0.3)' }}>Salir</button>
-          </form>
-        </nav>
+        </div>
       </header>
+
+      {playoffs && (
+        <PlayoffsHero
+          season={playoffs.def.season}
+          stages={scope.stages}
+          started={playoffs.started}
+          me={mePlayoffs}
+        />
+      )}
 
       <NotificationBanner vapidPublicKey={VAPID_PUBLIC_KEY} />
 
       {realMatches.length > 0 ? (
         <DashboardSections
           matches={realMatches}
-          users={boardUsers}
-          roundScores={roundScores || []}
-          roundOrder={roundOrder}
+          labels={scope.labels}
+          playoffRounds={playoffs?.rounds ?? []}
+          tables={tables}
+          awards={awards}
+          archive={scope.archive ? <PhaseArchive data={scope.archive} meId={user.id} /> : undefined}
         />
       ) : (
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+        <div className="glass-panel empty-state">
           Cargando los partidos de la Liga Profesional… Si no aparecen, actualizá la página en unos segundos.
         </div>
       )}

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useTransition } from 'react';
 import styles from './MatchCard.module.css';
 import { savePrediction, getMatchPredictions, MatchPredictionRow } from '@/app/dashboard/actions';
-import { fechaHoraLarga } from '@/lib/fecha';
+import { diaHora24 } from '@/lib/fecha';
 import { mensajeDeError } from '@/lib/errores';
 
 export interface MatchProps {
@@ -19,6 +19,7 @@ export interface MatchProps {
   awayScore?: number;
   featured?: boolean;
   round?: string;
+  roundLabel?: string;
   predictable?: boolean;
   // La fecha del partido todavía no cerró (algún partido de la fecha sin terminar).
   // Solo mientras está abierta se ven acá los pronósticos de los rivales del torneo.
@@ -88,7 +89,8 @@ export default function MatchCard({ match }: { match: MatchProps }) {
     }
   };
 
-  const dateFormatted = fechaHoraLarga(match.matchDate);
+  // Siempre en hora argentina (ver lib/fecha.ts) y en 24 h.
+  const dateFormatted = diaHora24(match.matchDate);
 
   // Minuto de juego: preferimos el REAL que informa ESPN (no cuenta el
   // entretiempo ni los atrasos). Si todavía no sincronizó, caemos al cálculo
@@ -123,11 +125,11 @@ export default function MatchCard({ match }: { match: MatchProps }) {
   const perfectPts = match.featured ? 12 : 6;
   const goodPts = match.featured ? 6 : 3;
   const ptsClass = pts === perfectPts ? styles.ptsPerfect : pts === goodPts ? styles.ptsGood : styles.ptsZero;
-  const ptsLabel = pts === perfectPts ? '🎯 Exacto' : pts === goodPts ? '✔ Ganador' : '✗ Sin puntos';
+  const ptsLabel = pts === perfectPts ? 'Exacto' : pts === goodPts ? 'Acierto' : 'Sin puntos';
 
   return (
     <div className={`${styles.card} ${match.featured ? styles.featured : ''} ${isLive ? styles.liveCard : ''}`}>
-      {match.featured && <div className={styles.featuredTag}>★ Vale doble</div>}
+      {match.featured && <div className={styles.featuredTag}>★ Partido destacado · x2</div>}
 
       <div className={styles.header}>
         {isLive ? (
@@ -135,11 +137,11 @@ export default function MatchCard({ match }: { match: MatchProps }) {
         ) : isFinished ? (
           <span className={styles.finishedTag}>Finalizado</span>
         ) : startedNotLive ? (
-          <span className={styles.stateHint}>🔒 El partido comenzó</span>
+          <span className={styles.stateHint}>Comenzó · cerrado</span>
         ) : (
           <span className={styles.dateTag}>{dateFormatted}</span>
         )}
-        {notYetOpen && <span className={styles.stateHint}>⏳ Se habilita pronto</span>}
+        {notYetOpen && <span className={styles.stateHint}>Se habilita pronto</span>}
         {canPredict && hasPrediction && !editing && (
           <span className={styles.predictedTag}>✓ Pronosticado</span>
         )}
@@ -181,7 +183,7 @@ export default function MatchCard({ match }: { match: MatchProps }) {
                 {match.userPrediction!.home}<span className={styles.scoreSep}>:</span>{match.userPrediction!.away}
               </div>
               <button type="button" className={styles.editBtn} onClick={() => setEditing(true)}>
-                ✏️ Editar
+                Editar
               </button>
             </div>
           ) : notYetOpen ? (

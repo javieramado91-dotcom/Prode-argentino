@@ -62,7 +62,7 @@ const FlyerStoryCard = forwardRef<HTMLDivElement, { data: FlyerData; style?: CSS
           background:
             'radial-gradient(1200px 900px at 50% -10%, rgba(0,158,227,0.24), transparent 60%), linear-gradient(165deg, #0b1220 0%, #0f1e33 55%, #0a1120 100%)',
           color: C.text,
-          fontFamily: 'Outfit, system-ui, sans-serif',
+          fontFamily: 'var(--font-body)',
           ...style,
         }}
       >

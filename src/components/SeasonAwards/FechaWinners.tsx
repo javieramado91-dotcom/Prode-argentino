@@ -22,7 +22,7 @@ export default function FechaWinners({ title, fechas }: { title: string; fechas:
               aria-controls={panelId}
               onClick={() => setOpenRound(open ? null : fecha.round)}
             >
-              <span className={styles.fecha}>{fecha.fecha ? `Fecha ${fecha.fecha}` : 'Fecha'}</span>
+              <span className={styles.fecha}>{fecha.label}</span>
               <span className={styles.trophy} aria-hidden="true"><TrophyIcon /></span>
               <span className={styles.winner}>{fecha.winners.join(', ')}</span>
               <span className={styles.points}>{fecha.points} pts</span>
@@ -35,7 +35,7 @@ export default function FechaWinners({ title, fechas }: { title: string; fechas:
               <div id={panelId} className={styles.details}>
                 <div className={styles.detailsHeader}>
                   <div>
-                    <strong>Tabla final de la fecha</strong>
+                    <strong>Tabla final · {fecha.label}</strong>
                     <span>Puntos y resultados exactos</span>
                   </div>
                   <FechaExport title={title} fecha={fecha} />
@@ -106,7 +106,7 @@ function FechaExport({ title, fecha }: { title: string; fecha: FechaWinner }) {
       })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
-      const fechaLabel = fecha.fecha ? `fecha-${fecha.fecha}` : 'fecha'
+      const fechaLabel = slugify(fecha.label)
       link.href = url
       link.download = `prode-${fechaLabel}-${slugify(title)}.jpg`
       link.click()
@@ -138,7 +138,7 @@ const ExportCard = forwardRef<HTMLDivElement, { title: string; fecha: FechaWinne
   { title, fecha },
   ref,
 ) {
-  const fechaTitle = fecha.fecha ? `FECHA ${fecha.fecha}` : 'FECHA'
+  const fechaTitle = fecha.label.toUpperCase()
   return (
     <div ref={ref} className={styles.exportCard}>
       <div className={styles.exportGlow} />
