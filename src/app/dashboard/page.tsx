@@ -7,6 +7,9 @@ import DashboardSections from '@/components/DashboardSections/DashboardSections'
 import NotificationBanner from '@/components/NotificationBanner/NotificationBanner'
 import TopNav from '@/components/TopNav/TopNav'
 import PlayoffsHero from '@/components/PlayoffsHero/PlayoffsHero'
+import PlayoffsHeroGate from '@/components/PlayoffsHero/PlayoffsHeroGate'
+import { HERO_COOKIE } from '@/components/PlayoffsHero/heroCookie'
+import { cookies } from 'next/headers'
 import PhaseStandings from '@/components/Standings/PhaseStandings'
 import PhaseArchive from '@/components/PhaseArchive/PhaseArchive'
 import PageTabs from '@/components/PageTabs/PageTabs'
@@ -115,6 +118,9 @@ export default async function DashboardPage() {
   const firstName = String(name).split(' ')[0]
 
   const playoffs = scope.playoffs
+  // El cartel de Playoffs se puede cerrar; la cookie evita mostrarlo y
+  // esconderlo de golpe en la próxima visita.
+  const heroHidden = (await cookies()).get(HERO_COOKIE)?.value === 'hidden'
   const tables = (
     <PageTabs
       tabs={[
@@ -198,12 +204,14 @@ export default async function DashboardPage() {
       </header>
 
       {playoffs && (
-        <PlayoffsHero
-          season={playoffs.def.season}
-          stages={scope.stages}
-          started={playoffs.started}
-          me={mePlayoffs}
-        />
+        <PlayoffsHeroGate initialHidden={heroHidden}>
+          <PlayoffsHero
+            season={playoffs.def.season}
+            stages={scope.stages}
+            started={playoffs.started}
+            me={mePlayoffs}
+          />
+        </PlayoffsHeroGate>
       )}
 
       <NotificationBanner vapidPublicKey={VAPID_PUBLIC_KEY} />

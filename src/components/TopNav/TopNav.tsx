@@ -4,8 +4,9 @@ import { LogoMark } from '@/components/Logo/Logo'
 import { IconCrown, IconHome, IconLogout, IconTrophy, IconUser } from '@/components/Icons/Icons'
 import styles from './TopNav.module.css'
 
-// Barra de la app compartida por todos los apartados: marca + navegación arriba
-// (escritorio) y barra inferior tipo app (celular). Se autoabastece de datos
+// Barra de la app compartida por todos los apartados: marca + navegación
+// SIEMPRE arriba (en celular las secciones van en una segunda fila, para que
+// todos las encuentren). Se autoabastece de datos
 // (si el usuario es admin y cuántas solicitudes pendientes hay).
 export default async function TopNav({
   active,
@@ -89,23 +90,6 @@ export function TopNavView({
         </form>
       </header>
 
-      {/* Barra inferior (celular) */}
-      <nav className={styles.bottomNav} aria-label="Principal (móvil)" data-bottom-nav>
-        {items.map(({ key, href, label, Icon }) => (
-          <Link
-            key={key}
-            href={href}
-            className={`${styles.bottomItem} ${active === key ? styles.bottomActive : ''}`}
-            aria-current={active === key ? 'page' : undefined}
-          >
-            <span className={styles.bottomIcon}>
-              <Icon size={22} />
-              {key === 'admin' && pendingCount > 0 && <span className={styles.badge}>{pendingCount}</span>}
-            </span>
-            {label}
-          </Link>
-        ))}
-      </nav>
     </>
   )
 }

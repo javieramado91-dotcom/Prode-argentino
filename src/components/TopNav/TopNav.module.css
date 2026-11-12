@@ -132,19 +132,17 @@
   background: rgba(248, 113, 113, 0.1);
 }
 
-/* ---------------------------------------------------------- Barra inferior */
-.bottomNav,
-.bottomSpacer {
-  display: none;
-}
-
+/* ------------------------------------------------- Celular: menú arriba */
 @media (max-width: 720px) {
   .appbar {
+    position: relative;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
     margin: 0 -1rem 1.1rem;
-    padding: 0 1rem;
-    height: 58px;
+    padding: 0.55rem 1rem 0.65rem;
   }
-  .links {
+  .brandText .brandSub {
     display: none;
   }
   .logoutForm {
@@ -159,50 +157,33 @@
     padding: 0;
     justify-content: center;
   }
-
-  .bottomNav {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 50;
-    display: flex;
-    justify-content: space-around;
-    gap: 0.25rem;
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-    background: rgba(6, 12, 24, 0.94);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid var(--line);
+  .links {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: 0.35rem;
   }
-  .bottomItem {
+  .link {
     flex: 1;
-    min-height: 54px;
-    display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
     gap: 3px;
-    border-radius: 12px;
-    font-family: var(--font-display);
-    font-size: 0.82rem;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-    touch-action: manipulation;
+    min-height: 54px;
+    padding: 0 4px;
+    font-size: 0.86rem;
+    border: 1px solid var(--line);
+    background: rgba(148, 163, 184, 0.05);
   }
-  .bottomIcon {
-    position: relative;
-    display: inline-flex;
+  .linkActive {
+    color: #fff;
+    border-color: rgba(56, 189, 248, 0.45);
+    background: linear-gradient(160deg, rgba(0, 158, 227, 0.35), rgba(0, 158, 227, 0.12));
   }
-  .bottomActive {
-    color: var(--color-accent);
-    background: rgba(0, 158, 227, 0.12);
+  .linkActive::after {
+    display: none;
   }
-  .bottomSpacer {
-    display: block;
-    position: fixed;
-    height: 0;
+  .badge {
+    top: 4px;
+    right: 10px;
   }
 }

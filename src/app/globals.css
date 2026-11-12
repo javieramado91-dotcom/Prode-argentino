@@ -57,7 +57,6 @@
 
   /* Layout */
   --appbar-h: 64px;
-  --bottomnav-h: 68px;
 }
 
 * {
@@ -528,9 +527,10 @@ button:disabled {
 
 /* ------------------------------------------------------- Responsive / Mobile */
 @media (max-width: 720px) {
-  /* Reserva lugar para la barra inferior de navegación (TopNav). */
-  body:has(nav[data-bottom-nav]) {
-    padding-bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom));
+  /* En celular la barra de la app no queda fija (ocupa dos filas): las
+     pestañas pegajosas se pegan directo arriba. */
+  :root {
+    --appbar-h: 0px;
   }
 }
 

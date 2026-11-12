@@ -11,6 +11,9 @@ import RenewTournament from '@/components/RenewTournament/RenewTournament'
 import DeleteTournament from '@/components/DeleteTournament/DeleteTournament'
 import TopNav from '@/components/TopNav/TopNav'
 import PlayoffsHero from '@/components/PlayoffsHero/PlayoffsHero'
+import PlayoffsHeroGate from '@/components/PlayoffsHero/PlayoffsHeroGate'
+import { HERO_COOKIE } from '@/components/PlayoffsHero/heroCookie'
+import { cookies } from 'next/headers'
 import PhaseStandings from '@/components/Standings/PhaseStandings'
 import PhaseArchive from '@/components/PhaseArchive/PhaseArchive'
 import PageTabs from '@/components/PageTabs/PageTabs'
@@ -65,6 +68,7 @@ export default async function GrupoDetallePage(props: {
   const roundOrder = [...scope.info.keys()].sort()
   const playoffs = scope.playoffs
   const mePlayoffs = meIn(scope.playoffRows, user.id)
+  const heroHidden = (await cookies()).get(HERO_COOKIE)?.value === 'hidden'
 
   // Etiqueta de la fecha de arranque del torneo.
   const startLabel = group.start_round ? scope.labels[group.start_round] ?? null : null
@@ -242,13 +246,15 @@ export default async function GrupoDetallePage(props: {
       <RenewTournament groupId={id} finalized={finalized} waiting={waiting} isOwner={isOwner} />
 
       {playoffs && (
-        <PlayoffsHero
-          season={playoffs.def.season}
-          stages={scope.stages}
-          started={playoffs.started}
-          me={mePlayoffs}
-          context={group.name}
-        />
+        <PlayoffsHeroGate initialHidden={heroHidden}>
+          <PlayoffsHero
+            season={playoffs.def.season}
+            stages={scope.stages}
+            started={playoffs.started}
+            me={mePlayoffs}
+            context={group.name}
+          />
+        </PlayoffsHeroGate>
       )}
 
       <PageTabs
