@@ -21,12 +21,13 @@ export default function Home() {
             Pronosticá los partidos de la Liga Profesional, sumá puntos en vivo y competí con tus amigos.
             Arrancan los playoffs: desde octavos hasta la final, el que más suma se lleva todo.
           </p>
+          {/* Primero el acceso de los que ya juegan; crear cuenta es el paso aparte. */}
           <div className={styles.heroCtas}>
-            <Link href="/login?mode=register" className="btn-primary" style={{ minHeight: 52, padding: '0 28px', fontSize: '1.15rem' }}>
-              Empezar a jugar
+            <Link href="/login" className="btn-primary" style={{ minHeight: 52, padding: '0 28px', fontSize: '1.15rem' }}>
+              Iniciar sesión
             </Link>
-            <Link href="/login" className="btn-ghost" style={{ minHeight: 52, padding: '0 22px', fontSize: '1.05rem' }}>
-              Ya tengo cuenta
+            <Link href="/login?mode=register" className="btn-ghost" style={{ minHeight: 52, padding: '0 22px', fontSize: '1.05rem' }}>
+              Crear cuenta
             </Link>
           </div>
         </div>
